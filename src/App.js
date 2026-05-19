@@ -81,7 +81,7 @@ const App = () => {
           } />
 
           <Route path="/create-fundraiser" element={
-            <ProtectedRoute role="ADMIN">
+            <ProtectedRoute>
               <CreateFundraiser />
             </ProtectedRoute>
           } />

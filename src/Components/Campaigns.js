@@ -24,7 +24,7 @@ const Campaigns = () => {
       goal: 100000,
       raised: 65000,
       image:
-        "https://images.unsplash.com/photo-1580281657521-389c76a8e9a0?auto=format&fit=crop&w=800&q=60",
+        "https://images.unsplash.com/photo-1599700403969-f77b3aa74837?auto=format&fit=crop&w=800&q=60",
     },
     {
       id: 3,
@@ -34,7 +34,7 @@ const Campaigns = () => {
       goal: 75000,
       raised: 30000,
       image:
-        "https://images.unsplash.com/photo-1584466991050-5d9f1c2b49b7?auto=format&fit=crop&w=800&q=60",
+        "https://images.unsplash.com/photo-1764684994219-8347a5ab0e5e?auto=format&fit=crop&w=800&q=60",
     },
   ];
 

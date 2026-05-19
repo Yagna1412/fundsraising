@@ -19,10 +19,10 @@ const CategoryDetails = () => {
   const { name } = useParams();
   const navigate = useNavigate();
 
-  const userLoggedIn = localStorage.getItem("loggedInUser"); 
+  const token = localStorage.getItem("token"); 
 
   const startFund = () => {
-    if (!userLoggedIn) {
+    if (!token) {
       navigate("/loginSignup");
     } else {
       navigate(`/create-fundraiser?category=${encodeURIComponent(name)}`);

@@ -7,21 +7,13 @@ const Home = () => {
 
   const handleNavigation = (destination) => {
     const token = localStorage.getItem("token");
-    const role = localStorage.getItem("role");
-
- 
     if (!token) {
       navigate("/loginSignup");
       return;
     }
 
-  
     if (destination === "start") {
-      if (role === "ADMIN") {
-        navigate("/create-fundraiser");
-      } else {
-        alert("Only Admins have rights to add new fields/fundraisers.");
-      }
+      navigate("/create-fundraiser");
     } 
   
     else if (destination === "explore") {
