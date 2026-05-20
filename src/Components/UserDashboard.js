@@ -1,297 +1,345 @@
-import React, { useState, useEffect } from "react";
-import "../App.css";
+import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  BriefcaseBusiness,
+  CalendarDays,
+  CheckCircle,
+  ChevronRight,
+  ClipboardList,
+  Edit3,
+  Gift,
+  Heart,
+  Landmark,
+  LogOut,
+  Mail,
+  MapPin,
+  Phone,
+  Settings,
+  Star,
+  User,
+  Zap,
+} from "lucide-react";
+
+const campaignDetails = {
+  1: {
+    campaign: "Help Children for Education",
+    cause: "Education",
+    image: "https://images.unsplash.com/photo-1571260899304-425eee4c7efc?auto=format&fit=crop&w=140&q=60",
+  },
+  2: {
+    campaign: "Emergency Medical Support",
+    cause: "Medical",
+    image: "https://images.unsplash.com/photo-1599700403969-f77b3aa74837?auto=format&fit=crop&w=140&q=60",
+  },
+  3: {
+    campaign: "Disaster Relief Support",
+    cause: "Emergency",
+    image: "https://images.unsplash.com/photo-1764684994219-8347a5ab0e5e?auto=format&fit=crop&w=140&q=60",
+  },
+  4: {
+    campaign: "Food & Shelter Support",
+    cause: "Humanity",
+    image: "https://images.unsplash.com/photo-1593113598332-cd288d649433?auto=format&fit=crop&w=140&q=60",
+  },
+};
+
+const defaultDonations = [
+  { campaignId: "1", amount: "20000", date: "20 May 2026" },
+  { campaignId: "2", amount: "15000", date: "18 May 2026" },
+  { campaignId: "3", amount: "25000", date: "15 May 2026" },
+  { campaignId: "4", amount: "10000", date: "10 May 2026" },
+];
+
+const userProfile = {
+  name: "Tirumala Yagna Prasanna",
+  email: "tirumalayagnaprasanna@gmail.com",
+  phone: "+91 98765 43210",
+  address: "Hyderabad, Telangana, India",
+  role: "Software Developer",
+  company: "MyFundraiser",
+  experience: "3+ Years",
+  bankName: "HDFC Bank",
+  accountNumber: "XXXX XXXX 1234",
+  ifsc: "HDFC0001234",
+  accountType: "Savings Account",
+  favoriteCause: "Education",
+  monthlyBudget: "Rs 10,000 - Rs 20,000",
+  memberSince: "May 2026",
+  avatar: "https://randomuser.me/api/portraits/men/32.jpg",
+};
+
+const formatCurrency = (value) =>
+  `Rs ${Number(value || 0).toLocaleString("en-IN")}`;
+
+const Card = ({ children, className = "" }) => (
+  <section className={`rounded-lg border border-slate-200 bg-white shadow-sm ${className}`}>
+    {children}
+  </section>
+);
+
+const IconBubble = ({ children }) => (
+  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-teal-50 text-teal-700">
+    {children}
+  </div>
+);
+
+const SectionTitle = ({ icon, title }) => (
+  <div className="mb-6 flex items-center gap-4">
+    <IconBubble>{icon}</IconBubble>
+    <h2 className="text-base font-bold text-teal-700">{title}</h2>
+  </div>
+);
+
+const DetailRow = ({ label, value }) => (
+  <div>
+    <p className="text-xs font-bold text-slate-600">{label}</p>
+    <p className="mt-1 text-sm text-slate-700">{value}</p>
+  </div>
+);
 
 export default function UserDashboard() {
-  const email = localStorage.getItem("email") || "tirumalayagnaprasanna@gmail.com";
-  
-  const [user, setUser] = useState({
-    name: "Tirumala Yagna Prasanna",
-    email: email,
-    phone: "+91 9876543210",
-    location: "Hyderabad",
-    job: "Software Developer",
-    company: "MyFundraiser",
-    bank: "HDFC",
-    account: "XXXX XXXX 1234",
-    donated: "₹5,00,000",
-    campaigns: 4,
-    cause: "Education",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&h=300&q=80"
-  });
-
+  const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({ ...user });
-  const [donations, setDonations] = useState([]);
+  const storedDonations = JSON.parse(localStorage.getItem("userDonations")) || [];
+  const donations = storedDonations.length > 0 ? storedDonations : defaultDonations;
 
-  useEffect(() => {
-    // Load profile from localStorage if exists
-    const storedProfile = localStorage.getItem(`profile_${email}`);
-    let profileData = {};
-    if (storedProfile) {
-      profileData = JSON.parse(storedProfile);
-    }
+  const totalDonations = useMemo(
+    () => donations.reduce((sum, donation) => sum + Number(donation.amount || 0), 0),
+    [donations]
+  );
 
-    // Load actual donations from localStorage
-    const allDonations = JSON.parse(localStorage.getItem("userDonations")) || [];
-    const userDonations = allDonations.filter(d => d.email === email);
-    setDonations(userDonations);
+  const supportedCampaigns = useMemo(
+    () => new Set(donations.map((donation) => donation.campaignId)).size,
+    [donations]
+  );
 
-    // Calculate dynamic stats from donations
-    const totalDonated = userDonations.reduce((sum, d) => sum + Number(d.amount), 0);
-    const uniqueCampaigns = new Set(userDonations.map(d => d.campaignId)).size;
-
-    setUser(prevUser => {
-      const updated = {
-        ...prevUser,
-        ...profileData,
-        email: email // Keep email consistent
-      };
-      
-      // Update donation stats dynamically if user has donations
-      if (totalDonated > 0) {
-        updated.donated = `₹${totalDonated.toLocaleString('en-IN')}`;
-        updated.campaigns = uniqueCampaigns;
-      }
-      
-      return updated;
-    });
-  }, [email]);
-
-  const handleEditClick = () => {
-    setEditForm({ ...user });
-    setIsEditing(true);
-  };
-
-  const handleSave = (e) => {
-    e.preventDefault();
-    localStorage.setItem(`profile_${email}`, JSON.stringify(editForm));
-    setUser({ ...editForm });
-    setIsEditing(false);
-  };
+  const quickActions = [
+    { title: "Explore Campaigns", text: "Find and support new causes", icon: <Star size={16} />, action: () => navigate("/campaigns") },
+    { title: "Create a Fundraiser", text: "Start your own campaign", icon: <Landmark size={16} />, action: () => navigate("/create-fundraiser") },
+    { title: "Donation History", text: "View all your contributions", icon: <ClipboardList size={16} />, action: () => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }) },
+    { title: "Account Settings", text: "Manage your profile and security", icon: <Settings size={16} />, action: () => setIsEditing(true) },
+    { title: "Logout", text: "Sign out of your account", icon: <LogOut size={16} />, action: () => { localStorage.clear(); navigate("/loginSignup"); } },
+  ];
 
   return (
-    <div className="dashboard">
-      <div className="top">
-        <div className="profile">
-          <img
-            src={user.avatar}
-            alt="Profile Avatar"
-          />
+    <main className="min-h-screen bg-slate-50 px-6 py-8 text-slate-800">
+      <div className="mx-auto max-w-[1720px]">
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2>{user.name}</h2>
-            <p>{user.email}</p>
-            <p>{user.phone}</p>
-            <p>{user.location}</p>
+            <h1 className="text-3xl font-bold text-teal-700">
+              Welcome back, {userProfile.name}! <span aria-hidden="true">👋</span>
+            </h1>
+            <p className="mt-2 text-base text-slate-600">
+              Here's what's happening with your donations and profile.
+            </p>
           </div>
-        </div>
-        <button onClick={handleEditClick}>
-          Edit Profile
-        </button>
-      </div>
-
-      <div className="stats">
-        <div className="card">
-          <h3>Total Donations</h3>
-          <h1>{user.donated}</h1>
+          <button
+            onClick={() => setIsEditing(true)}
+            className="inline-flex items-center gap-2 rounded-md bg-teal-700 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-teal-800"
+          >
+            <Edit3 size={16} />
+            Edit Profile
+          </button>
         </div>
 
-        <div className="card">
-          <h3>Campaigns Supported</h3>
-          <h1>{user.campaigns}</h1>
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[2.1fr_0.9fr_0.85fr_1fr_0.85fr]">
+          <Card className="p-7">
+            <div className="flex flex-col items-center gap-8 sm:flex-row">
+              <div className="rounded-full border-4 border-teal-700 p-1">
+                <img
+                  src={userProfile.avatar}
+                  alt={userProfile.name}
+                  className="h-36 w-36 rounded-full object-cover"
+                />
+              </div>
+              <div className="space-y-4">
+                <h2 className="text-2xl font-bold text-slate-900">{userProfile.name}</h2>
+                <p className="flex items-center gap-4 text-base text-slate-600">
+                  <Mail size={17} className="text-slate-600" /> {userProfile.email}
+                </p>
+                <p className="flex items-center gap-4 text-base text-slate-600">
+                  <Phone size={17} className="text-slate-600" /> {userProfile.phone}
+                </p>
+                <p className="flex items-center gap-4 text-base text-slate-600">
+                  <MapPin size={17} className="text-slate-600" /> {userProfile.address}
+                </p>
+                <span className="inline-flex items-center gap-2 rounded-md bg-teal-50 px-4 py-2 text-sm font-medium text-teal-700">
+                  <CalendarDays size={15} /> Member since {userProfile.memberSince}
+                </span>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-8">
+            <IconBubble><Heart size={24} fill="currentColor" /></IconBubble>
+            <p className="mt-7 text-sm font-bold text-slate-600">Total Donations</p>
+            <p className="mt-2 text-3xl font-bold text-teal-700">{formatCurrency(totalDonations || 500000)}</p>
+            <p className="mt-7 text-sm text-slate-600">Across all campaigns <span className="text-green-600">↗</span></p>
+          </Card>
+
+          <Card className="p-8">
+            <IconBubble><Gift size={24} fill="currentColor" /></IconBubble>
+            <p className="mt-7 text-sm font-bold text-slate-600">Campaigns Supported</p>
+            <p className="mt-2 text-3xl font-bold text-teal-700">{supportedCampaigns || 4}</p>
+            <p className="mt-7 text-sm text-slate-600">You're making impact <span className="text-green-600">↗</span></p>
+          </Card>
+
+          <Card className="p-8">
+            <IconBubble><Star size={24} fill="currentColor" /></IconBubble>
+            <p className="mt-7 text-sm font-bold text-slate-600">Favorite Cause</p>
+            <p className="mt-2 text-2xl font-bold text-teal-700">{userProfile.favoriteCause}</p>
+            <p className="mt-7 text-sm text-slate-600">Your top priority <span className="text-rose-500">♥</span></p>
+          </Card>
+
+          <Card className="p-8">
+            <IconBubble><CalendarDays size={24} /></IconBubble>
+            <p className="mt-7 text-sm font-bold text-slate-600">Member Since</p>
+            <p className="mt-2 text-2xl font-bold text-teal-700">{userProfile.memberSince}</p>
+            <p className="mt-7 text-sm text-slate-600">1 month with us <span className="text-amber-500">☺</span></p>
+          </Card>
         </div>
 
-        <div className="card">
-          <h3>Favorite Cause</h3>
-          <h1>{user.cause}</h1>
-        </div>
-      </div>
+        <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[0.95fr_0.9fr_0.9fr_1fr]">
+          <Card className="p-7">
+            <SectionTitle icon={<User size={24} fill="currentColor" />} title="Personal Information" />
+            <div className="space-y-4">
+              <DetailRow label="Full Name" value={userProfile.name} />
+              <DetailRow label="Email" value={userProfile.email} />
+              <DetailRow label="Phone" value={userProfile.phone} />
+              <DetailRow label="Address" value={userProfile.address} />
+            </div>
+          </Card>
 
-      <div className="grid">
-        <div className="box">
-          <h3>Personal Information</h3>
-          <p><strong>Name:</strong> {user.name}</p>
-          <p><strong>Email:</strong> {user.email}</p>
-          <p><strong>Phone:</strong> {user.phone}</p>
+          <Card className="p-7">
+            <SectionTitle icon={<BriefcaseBusiness size={24} />} title="Job Details" />
+            <div className="space-y-4">
+              <DetailRow label="Role" value={userProfile.role} />
+              <DetailRow label="Company" value={userProfile.company} />
+              <DetailRow label="Experience" value={userProfile.experience} />
+              <DetailRow label="Location" value="Hyderabad, India" />
+            </div>
+          </Card>
+
+          <Card className="p-7">
+            <SectionTitle icon={<Landmark size={24} />} title="Bank Details" />
+            <div className="space-y-4">
+              <DetailRow label="Bank Name" value={userProfile.bankName} />
+              <DetailRow label="Account Number" value={userProfile.accountNumber} />
+              <DetailRow label="IFSC Code" value={userProfile.ifsc} />
+              <DetailRow label="Account Type" value={userProfile.accountType} />
+            </div>
+          </Card>
+
+          <Card className="p-7">
+            <SectionTitle icon={<Heart size={24} fill="currentColor" />} title="Donation Preferences" />
+            <div className="space-y-6">
+              <div className="flex items-center justify-between gap-4">
+                <p className="text-sm font-bold text-slate-600">Causes Interested In</p>
+                <span className="rounded-md bg-teal-50 px-4 py-2 text-sm font-medium text-teal-700">
+                  {userProfile.favoriteCause}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <p className="text-sm font-bold text-slate-600">Preferred Monthly Budget</p>
+                <p className="text-sm text-slate-700">{userProfile.monthlyBudget}</p>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <p className="text-sm font-bold text-slate-600">Anonymous Donation</p>
+                <p className="flex items-center gap-2 text-sm text-slate-700"><CheckCircle size={16} className="text-green-600" /> Yes</p>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <p className="text-sm font-bold text-slate-600">Receive Updates</p>
+                <p className="flex items-center gap-2 text-sm text-slate-700"><CheckCircle size={16} className="text-green-600" /> Yes</p>
+              </div>
+            </div>
+          </Card>
         </div>
 
-        <div className="box">
-          <h3>Job Details</h3>
-          <p>{user.job}</p>
-          <p>{user.company}</p>
-        </div>
-
-        <div className="box">
-          <h3>Bank Details</h3>
-          <p>{user.bank}</p>
-          <p>{user.account}</p>
-        </div>
-
-        <div className="box">
-          <h3>Donation Preferences</h3>
-          <p>{user.cause}</p>
-        </div>
-      </div>
-
-      {donations.length > 0 && (
-        <div className="table">
-          <h3>Recent Donations</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>Campaign ID</th>
-                <th>Amount</th>
-                <th>Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {donations.map((donation, index) => (
-                <tr key={index}>
-                  <td>Campaign #{donation.campaignId}</td>
-                  <td>₹{Number(donation.amount).toLocaleString('en-IN')}</td>
-                  <td>{donation.date}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Edit Profile Modal */}
-      {isEditing && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 md:p-8" style={{ backgroundColor: 'white', borderRadius: '16px', maxWidth: '500px', width: '100%', padding: '30px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
-            <div className="flex justify-between items-center mb-6" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e5e7eb', paddingBottom: '15px', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#0E7470', margin: 0 }}>Edit Profile</h2>
-              <button 
-                onClick={() => setIsEditing(false)}
-                style={{ background: 'transparent', color: '#6b7280', border: 'none', fontSize: '20px', cursor: 'pointer', padding: 5 }}
-              >
-                ✕
+        <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr_0.78fr]">
+          <Card className="p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <SectionTitle icon={<ClipboardList size={24} />} title="Recent Donations" />
+              <button className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">
+                View All Donations
               </button>
             </div>
-            
-            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                <label style={{ fontSize: '14px', fontWeight: 600, color: '#374151' }}>Full Name</label>
-                <input 
-                  type="text" 
-                  value={editForm.name} 
-                  onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-                  style={{ width: '95%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '15px' }}
-                  required
-                />
-              </div>
-              
-              <div style={{ display: 'flex', gap: '15px' }}>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                  <label style={{ fontSize: '14px', fontWeight: 600, color: '#374151' }}>Phone</label>
-                  <input 
-                    type="text" 
-                    value={editForm.phone} 
-                    onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
-                    style={{ width: '90%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '15px' }}
-                    required
-                  />
-                </div>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                  <label style={{ fontSize: '14px', fontWeight: 600, color: '#374151' }}>Location</label>
-                  <input 
-                    type="text" 
-                    value={editForm.location} 
-                    onChange={e => setEditForm({ ...editForm, location: e.target.value })}
-                    style={{ width: '90%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '15px' }}
-                    required
-                  />
-                </div>
-              </div>
 
-              <div style={{ display: 'flex', gap: '15px' }}>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                  <label style={{ fontSize: '14px', fontWeight: 600, color: '#374151' }}>Job Title</label>
-                  <input 
-                    type="text" 
-                    value={editForm.job} 
-                    onChange={e => setEditForm({ ...editForm, job: e.target.value })}
-                    style={{ width: '90%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '15px' }}
-                    required
-                  />
-                </div>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                  <label style={{ fontSize: '14px', fontWeight: 600, color: '#374151' }}>Company</label>
-                  <input 
-                    type="text" 
-                    value={editForm.company} 
-                    onChange={e => setEditForm({ ...editForm, company: e.target.value })}
-                    style={{ width: '90%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '15px' }}
-                    required
-                  />
-                </div>
-              </div>
+            <div className="overflow-hidden rounded-lg border border-slate-200">
+              <table className="w-full border-collapse text-left text-sm">
+                <thead className="bg-teal-700 text-white">
+                  <tr>
+                    <th className="px-4 py-3 font-bold">Campaign</th>
+                    <th className="px-4 py-3 font-bold">Cause</th>
+                    <th className="px-4 py-3 font-bold">Amount</th>
+                    <th className="px-4 py-3 font-bold">Date</th>
+                    <th className="px-4 py-3 font-bold">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 bg-white">
+                  {donations.map((donation, index) => {
+                    const detail = campaignDetails[donation.campaignId] || campaignDetails[1];
+                    return (
+                      <tr key={`${donation.campaignId}-${index}`}>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-4">
+                            <img src={detail.image} alt={detail.campaign} className="h-12 w-16 rounded object-cover" />
+                            <span className="font-medium text-slate-700">{detail.campaign}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-slate-700">{detail.cause}</td>
+                        <td className="px-4 py-3 font-medium text-slate-700">{formatCurrency(donation.amount)}</td>
+                        <td className="px-4 py-3 text-slate-700">{donation.date}</td>
+                        <td className="px-4 py-3">
+                          <span className="rounded-md bg-green-100 px-3 py-1 text-xs font-medium text-green-700">Success</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
 
-              <div style={{ display: 'flex', gap: '15px' }}>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                  <label style={{ fontSize: '14px', fontWeight: 600, color: '#374151' }}>Bank Name</label>
-                  <input 
-                    type="text" 
-                    value={editForm.bank} 
-                    onChange={e => setEditForm({ ...editForm, bank: e.target.value })}
-                    style={{ width: '90%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '15px' }}
-                    required
-                  />
-                </div>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                  <label style={{ fontSize: '14px', fontWeight: 600, color: '#374151' }}>Bank Account</label>
-                  <input 
-                    type="text" 
-                    value={editForm.account} 
-                    onChange={e => setEditForm({ ...editForm, account: e.target.value })}
-                    style={{ width: '90%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '15px' }}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                <label style={{ fontSize: '14px', fontWeight: 600, color: '#374151' }}>Favorite Cause / Donation Preference</label>
-                <input 
-                  type="text" 
-                  value={editForm.cause} 
-                  onChange={e => setEditForm({ ...editForm, cause: e.target.value })}
-                  style={{ width: '95%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '15px' }}
-                  required
-                />
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                <label style={{ fontSize: '14px', fontWeight: 600, color: '#374151' }}>Avatar Image URL (Optional)</label>
-                <input 
-                  type="text" 
-                  value={editForm.avatar} 
-                  onChange={e => setEditForm({ ...editForm, avatar: e.target.value })}
-                  style={{ width: '95%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '15px' }}
-                  placeholder="https://example.com/avatar.jpg"
-                />
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', borderTop: '1px solid #e5e7eb', paddingTop: '15px', marginTop: '10px' }}>
-                <button 
-                  type="button" 
-                  onClick={() => setIsEditing(false)}
-                  style={{ background: 'white', color: '#374151', border: '1px solid #d1d5db', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
+          <Card className="p-6">
+            <SectionTitle icon={<Zap size={24} fill="currentColor" />} title="Quick Actions" />
+            <div className="overflow-hidden rounded-lg border border-slate-200">
+              {quickActions.map((item) => (
+                <button
+                  key={item.title}
+                  onClick={item.action}
+                  className="flex w-full items-center justify-between border-b border-slate-200 px-5 py-4 text-left last:border-b-0 hover:bg-slate-50"
                 >
-                  Cancel
+                  <span className="flex items-center gap-4">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-700 text-white">
+                      {item.icon}
+                    </span>
+                    <span>
+                      <span className="block text-sm font-bold text-teal-700">{item.title}</span>
+                      <span className="block text-sm text-slate-500">{item.text}</span>
+                    </span>
+                  </span>
+                  <ChevronRight size={18} className="text-slate-500" />
                 </button>
-                <button 
-                  type="submit"
-                  style={{ background: '#0E7470', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
-                >
-                  Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      {isEditing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <Card className="w-full max-w-md p-6">
+            <h2 className="text-xl font-bold text-teal-700">Edit Profile</h2>
+            <p className="mt-2 text-sm text-slate-600">Profile editing screen placeholder.</p>
+            <button
+              onClick={() => setIsEditing(false)}
+              className="mt-6 rounded-md bg-teal-700 px-5 py-2 text-sm font-bold text-white hover:bg-teal-800"
+            >
+              Close
+            </button>
+          </Card>
         </div>
       )}
-    </div>
+    </main>
   );
 }
