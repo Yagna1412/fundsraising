@@ -56,11 +56,8 @@ const Navbar = () => {
           </Link>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            {role === "ADMIN" ? (
-              <Link to="/admin" className="hover:text-gray-300" style={{ textDecoration: 'none', color: 'white' }}>Admin</Link>
-            ) : (
-              <Link to="/dashboard" className="hover:text-gray-300" style={{ textDecoration: 'none', color: 'white' }}>Dashboard</Link>
-            )}
+            <Link to="/dashboard" className="hover:text-gray-300" style={{ textDecoration: 'none', color: 'white' }}>User Dashboard</Link>
+            <Link to="/admin" className="hover:text-gray-300 ml-2" style={{ textDecoration: 'none', color: 'white' }}>Admin Dashboard</Link>
 
             <button 
               onClick={handleLogout} 

@@ -15,19 +15,14 @@ import Donate from "./Components/Donate";
 import Footer from "./Components/Footer";
 import AdminDashboard from "./Components/AdminDashboard";
 
-const ProtectedRoute = ({ children, role }) => {
-const token = localStorage.getItem("token");
-const userRole = localStorage.getItem("role");
+const ProtectedRoute = ({ children }) => {
+	const token = localStorage.getItem("token");
 
-if (!token) {
-return <Navigate to="/loginSignup" replace />;
-}
+	if (!token) {
+		return <Navigate to="/loginSignup" replace />;
+	}
 
-if (role && role !== userRole) {
-return <Navigate to="/unauthorized" replace />;
-}
-
-return children;
+	return children;
 };
 
 const Unauthorized = () => (
