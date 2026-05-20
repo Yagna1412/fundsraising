@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom"; 
 
-const API_URL = "http://localhost:8081/user";
+const API_URL = "http://localhost:8080/users";
 const ICON_SIZE = "20";
 
 const MailIcon = (
@@ -85,6 +85,13 @@ const Loginsignup = () => {
     return newErrors;
   };
 
+  const saveUserSession = (email) => {
+    localStorage.setItem("token", "user_token_" + Date.now());
+    localStorage.setItem("email", email);
+    localStorage.setItem("username", email);
+    localStorage.setItem("role", "USER");
+  };
+
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     const validationErrors = validateLogin();
@@ -96,12 +103,9 @@ const Loginsignup = () => {
     }
 
     try {
-      const response = await axios.post(`${API_URL}/login`, { email: loginForm.email, password: loginForm.password });
+      await axios.post(`${API_URL}/login`, { email: loginForm.email, password: loginForm.password });
       
-      localStorage.setItem("token", "user_token_" + Date.now());
-      localStorage.setItem("email", loginForm.email);
-      localStorage.setItem("username", loginForm.email);
-      localStorage.setItem("role", "USER");
+      saveUserSession(loginForm.email);
 
       setFeedback({ text: `Login Successful! Welcome`, type: "success" });
 
@@ -111,7 +115,25 @@ const Loginsignup = () => {
 
     } catch (error) {
       const msg = error.response?.data || "Invalid credentials";
-      setFeedback({ text: typeof msg === 'string' ? msg : "Invalid credentials", type: "error" });
+      const message = typeof msg === 'string' ? msg : msg.error;
+
+      if (message === "Invalid credentials") {
+        setFeedback({ text: "Account not found or password is incorrect. Please register first.", type: "error" });
+        setRegisterForm({
+          name: "",
+          email: loginForm.email,
+          password: loginForm.password
+        });
+
+        setTimeout(() => {
+          setLoginOpen(false);
+          setRegisterOpen(true);
+          setErrors({});
+        }, 1200);
+        return;
+      }
+
+      setFeedback({ text: message || "Invalid credentials", type: "error" });
     }
   };
 
@@ -125,21 +147,21 @@ const Loginsignup = () => {
     }
 
     try {
-      const res = await axios.post(`${API_URL}`, { 
+      await axios.post(`${API_URL}`, { 
         name: registerForm.name,
         email: registerForm.email, 
         password: registerForm.password 
       });
 
+      saveUserSession(registerForm.email);
+
       setFeedback({
-        text: "Registration Successful! Please Login.",
+        text: "Registration Successful! Welcome.",
         type: "success"
       });
 
       setTimeout(() => {
-        setRegisterOpen(false);
-        setLoginOpen(true);
-        setErrors({});
+        navigate("/campaigns");
       }, 1500);
 
     } catch (error) {
