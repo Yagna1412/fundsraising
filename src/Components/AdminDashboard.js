@@ -1,314 +1,437 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useMemo, useState } from "react";
+import {
+  BarChart3,
+  Bell,
+  CheckCircle,
+  CircleDollarSign,
+  FileText,
+  Home,
+  Inbox,
+  LayoutDashboard,
+  MessageSquare,
+  Search,
+  Settings,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
 
-const AdminDashboard = () => {
-  const navigate = useNavigate();
-  const adminName = localStorage.getItem("username") || "Admin";
+const campaigns = [
+  { name: "Heart Surgery for Arjun", organiser: "Meena R.", category: "Medical", raised: "Rs 4,10,000", goal: "Rs 5,00,000", progress: 82, status: "Active", deadline: "Jun 15" },
+  { name: "School Supplies - Nalgonda", organiser: "Suresh K.", category: "Education", raised: "Rs 51,600", goal: "Rs 1,20,000", progress: 43, status: "Active", deadline: "May 30" },
+  { name: "Flood Relief - Warangal", organiser: "NGO Sahay", category: "Community", raised: "Rs 9,70,000", goal: "Rs 10,00,000", progress: 97, status: "Urgent", deadline: "May 22" },
+  { name: "Community Well Project", organiser: "Priso M.", category: "Community", raised: "Rs 65,200", goal: "Rs 2,50,000", progress: 26, status: "Paused", deadline: "Jul 1" },
+  { name: "Cancer Treatment Fund", organiser: "Ramesh P.", category: "Medical", raised: "Rs 82,000", goal: "Rs 4,00,000", progress: 61, status: "Active", deadline: "Jun 30" },
+];
 
-  const stats = [
-    { label: "Total Raised", value: "Rs 24.8L", note: "+12% from last month", tone: "text-green-600" },
-    { label: "Active Campaigns", value: "38", note: "+5 new this week", tone: "text-green-600" },
-    { label: "Total Donors", value: "1,247", note: "+89 this week", tone: "text-green-600" },
-    { label: "Success Rate", value: "64%", note: "-2% from last month", tone: "text-red-600" },
-  ];
+const donations = [
+  { donor: "Ravi Kumar", campaign: "Heart Surgery for Arjun", amount: "Rs 5,000", method: "UPI", date: "May 21, 2026 - 10:30 AM", status: "Success" },
+  { donor: "Ananya Patel", campaign: "Flood Relief - Warangal", amount: "Rs 10,000", method: "Card", date: "May 21, 2026 - 10:20 AM", status: "Success" },
+  { donor: "Sanjay Singh", campaign: "School Supplies - Nalgonda", amount: "Rs 2,500", method: "UPI", date: "May 21, 2026 - 10:10 AM", status: "Success" },
+  { donor: "Lakshmi M.", campaign: "Heart Surgery for Arjun", amount: "Rs 15,000", method: "Net Banking", date: "May 21, 2026 - 10:05 AM", status: "Success" },
+  { donor: "Deepa Sharma", campaign: "Cancer Treatment Fund", amount: "Rs 1,000", method: "Card", date: "May 21, 2026 - 09:48 AM", status: "Pending" },
+];
 
-  const activeCampaigns = [
-    { title: "Heart Surgery for Arjun", organiser: "Meena R.", category: "Medical", goal: "Rs 5,00,000", progress: 82, status: "Active", deadline: "Jun 15" },
-    { title: "School Supplies - Nalgonda", organiser: "Suresh K.", category: "Education", goal: "Rs 1,20,000", progress: 43, status: "Active", deadline: "May 30" },
-    { title: "Flood Relief - Warangal", organiser: "NGO Sahay", category: "Community", goal: "Rs 10,00,000", progress: 97, status: "Urgent", deadline: "May 22" },
-  ];
+const donors = [
+  { name: "Ravi Kumar", email: "ravi.kumar@email.com", donated: "Rs 50,000", campaigns: 5, last: "May 21, 2026" },
+  { name: "Ananya Patel", email: "ananya.patel@email.com", donated: "Rs 35,000", campaigns: 3, last: "May 21, 2026" },
+  { name: "Venkat Naidu", email: "venkat.naidu@email.com", donated: "Rs 40,000", campaigns: 4, last: "May 21, 2026" },
+  { name: "Sanjay Singh", email: "sanjay.singh@email.com", donated: "Rs 22,500", campaigns: 2, last: "May 21, 2026" },
+  { name: "Lakshmi M.", email: "lakshmi@email.com", donated: "Rs 15,000", campaigns: 2, last: "May 21, 2026" },
+];
 
-  const recentDonations = [
-    { name: "Ravi Kumar", campaign: "Heart Surgery for Arjun", amount: "+Rs 5,000", time: "2 min ago" },
-    { name: "Ananya Patel", campaign: "Flood Relief - Warangal", amount: "+Rs 10,000", time: "14 min ago" },
-    { name: "Sanjay Singh", campaign: "School Supplies", amount: "+Rs 2,500", time: "38 min ago" },
-  ];
+const approvals = [
+  { campaign: "Dialysis Fund for Deepa", by: "Deepa V.", category: "Medical", goal: "Rs 3,00,000", date: "May 21, 2026", docs: 3 },
+  { campaign: "Free Tuition Centre", by: "Teja R.", category: "Education", goal: "Rs 60,000", date: "May 21, 2026", docs: 2 },
+  { campaign: "Village Road Repair", by: "Bhanu N.", category: "Community", goal: "Rs 1,50,000", date: "May 21, 2026", docs: 4 },
+];
 
-  const navItems = [
-    { label: "Dashboard", icon: "▦", path: "/admin", badge: null },
-    { label: "Campaigns", icon: "□", path: "/admin/campaigns", badge: null },
-    { label: "Donations", icon: "₹", path: "/admin/donations", badge: null },
-    { label: "Donors", icon: "◎", path: "/admin/donors", badge: null },
-    { label: "Approvals", icon: "✓", path: "/admin/approvals", badge: "3" },
-  ];
+const conversations = [
+  { name: "Meena R.", subject: "Heart Surgery for Arjun", time: "10:30 AM", active: true },
+  { name: "Suresh K.", subject: "School Supplies - Nalgonda", time: "10:10 AM", active: false },
+  { name: "Deepa V.", subject: "Dialysis Fund for Deepa", time: "Yesterday", active: false },
+  { name: "Teja R.", subject: "Free Tuition Centre", time: "Yesterday", active: false },
+  { name: "Bhanu N.", subject: "Village Road Repair", time: "Yesterday", active: false },
+];
+
+const navItems = [
+  { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { key: "campaigns", label: "Campaigns", icon: Home },
+  { key: "donors", label: "Donors", icon: Users },
+  { key: "donations", label: "Donations", icon: CircleDollarSign },
+  { key: "approvals", label: "Approvals", icon: CheckCircle, badge: 3 },
+  { key: "reports", label: "Reports", icon: FileText },
+  { key: "messages", label: "Messages", icon: MessageSquare },
+  { key: "settings", label: "Settings", icon: Settings },
+];
+
+const StatCard = ({ icon: Icon, label, value, note, danger }) => (
+  <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-teal-50 text-teal-700">
+      <Icon size={18} />
+    </div>
+    <p className="text-sm font-semibold text-slate-500">{label}</p>
+    <p className="mt-2 text-2xl font-bold text-slate-950">{value}</p>
+    {note && <p className={`mt-2 text-xs font-semibold ${danger ? "text-red-600" : "text-green-600"}`}>{note}</p>}
+  </div>
+);
+
+const StatusPill = ({ status }) => {
+  const style = status === "Urgent"
+    ? "bg-red-50 text-red-700"
+    : status === "Pending" || status === "Paused"
+      ? "bg-amber-50 text-amber-700"
+      : "bg-green-50 text-green-700";
+  return <span className={`rounded-full px-3 py-1 text-xs font-bold ${style}`}>{status}</span>;
+};
+
+const Progress = ({ value }) => (
+  <div className="flex items-center gap-3">
+    <div className="h-2 w-28 rounded-full bg-slate-100">
+      <div className="h-2 rounded-full bg-teal-600" style={{ width: `${value}%` }} />
+    </div>
+    <span className="w-9 text-xs font-bold text-slate-500">{value}%</span>
+  </div>
+);
+
+const Toolbar = ({ placeholder, children }) => (
+  <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+    <label className="relative w-full md:max-w-sm">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+      <input className="w-full rounded-md border border-slate-200 py-2 pl-9 pr-3 text-sm outline-none focus:border-teal-600" placeholder={placeholder} />
+    </label>
+    <div className="flex flex-wrap gap-2">{children}</div>
+  </div>
+);
+
+const TableShell = ({ children }) => (
+  <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+    <table className="w-full min-w-[900px] border-collapse text-left text-sm">{children}</table>
+  </div>
+);
+
+export default function AdminDashboard() {
+  const [activeView, setActiveView] = useState("dashboard");
+
+  const title = useMemo(() => navItems.find((item) => item.key === activeView)?.label || "Dashboard", [activeView]);
+
+  const renderDashboard = () => (
+    <>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard icon={CircleDollarSign} label="Total Raised" value="Rs 24.8L" note="+12% from last month" />
+        <StatCard icon={Home} label="Active Campaigns" value="38" note="+5 new this week" />
+        <StatCard icon={Users} label="Total Donors" value="1,247" note="+89 this week" />
+        <StatCard icon={BarChart3} label="Success Rate" value="64%" note="-2% from last month" danger />
+      </div>
+
+      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.8fr)_minmax(340px,0.8fr)_minmax(280px,0.75fr)]">
+        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="font-bold text-slate-900">Monthly Fundraising (Rs Lakhs)</h2>
+            <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>This Month</option></select>
+          </div>
+          <div className="grid h-64 grid-cols-6 items-end gap-4 rounded-lg bg-slate-50 px-6 pb-8 pt-5">
+            {[3.2, 2.9, 4.2, 3.7, 4.8, 6.0].map((amount, index) => (
+              <div key={amount} className="relative flex h-full items-end justify-center">
+                <div className={`w-full max-w-12 rounded-t-md ${index === 5 ? "bg-teal-700" : "bg-teal-300"}`} style={{ height: `${amount * 30}px` }} />
+                <span className="absolute -bottom-6 text-xs font-semibold text-slate-500">{["Dec", "Jan", "Feb", "Mar", "Apr", "May"][index]}</span>
+                <span className="absolute text-xs font-bold text-slate-500" style={{ bottom: `${amount * 30 + 8}px` }}>{amount}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-5 font-bold text-slate-900">Campaign Categories</h2>
+          <div className="flex items-center gap-5">
+            <div className="flex h-36 w-36 shrink-0 items-center justify-center rounded-full border-[18px] border-teal-600 bg-white text-center text-xl font-bold text-teal-800">
+              38<br /><span className="text-xs font-semibold text-slate-500">Total</span>
+            </div>
+            <div className="w-full space-y-3 text-sm">
+              {["Medical 40%", "Education 22%", "Community 14%", "Others 24%"].map((item) => (
+                <div key={item} className="flex justify-between rounded-md bg-slate-50 px-3 py-2">
+                  <span>{item.split(" ")[0]}</span>
+                  <b>{item.split(" ")[1]}</b>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-4 font-bold text-slate-900">Live Donations</h2>
+          <div className="space-y-4">
+            {donations.slice(0, 5).map((item) => (
+              <div key={`${item.donor}-${item.date}`} className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-teal-50 text-xs font-bold text-teal-700">
+                    {item.donor.split(" ").map((part) => part[0]).slice(0, 2).join("")}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-slate-800">{item.donor}</p>
+                    <p className="truncate text-xs text-slate-500">{item.date.split(" - ")[1]}</p>
+                  </div>
+                </div>
+                <p className="text-sm font-bold text-green-600">{item.amount}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+
+      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[1fr_1fr]">
+        {renderRecentDonations()}
+        {renderApprovals(true)}
+      </div>
+    </>
+  );
+
+  const renderCampaigns = () => (
+    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <Toolbar placeholder="Search campaigns...">
+        <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>All Categories</option></select>
+        <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>All Status</option></select>
+        <button className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white">+ New Campaign</button>
+      </Toolbar>
+      <TableShell>
+        <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+          <tr><th className="px-4 py-3">Campaign</th><th>Organiser</th><th>Category</th><th>Raised</th><th>Goal</th><th>Progress</th><th>Status</th><th>Deadline</th><th>Actions</th></tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {campaigns.map((item) => (
+            <tr key={item.name}><td className="px-4 py-4 font-bold">{item.name}</td><td>{item.organiser}</td><td>{item.category}</td><td>{item.raised}</td><td>{item.goal}</td><td><Progress value={item.progress} /></td><td><StatusPill status={item.status} /></td><td>{item.deadline}</td><td className="font-bold">...</td></tr>
+          ))}
+        </tbody>
+      </TableShell>
+    </section>
+  );
+
+  const renderDonations = () => (
+    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <Toolbar placeholder="Search donations...">
+        <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>All Campaigns</option></select>
+        <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>All Methods</option></select>
+        <button className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white">Export</button>
+      </Toolbar>
+      <TableShell>
+        <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+          <tr><th className="px-4 py-3">Donor</th><th>Campaign</th><th>Amount</th><th>Method</th><th>Date & Time</th><th>Status</th><th>Actions</th></tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {donations.map((item) => (
+            <tr key={`${item.donor}-${item.date}`}><td className="px-4 py-4 font-bold">{item.donor}</td><td>{item.campaign}</td><td>{item.amount}</td><td>{item.method}</td><td>{item.date}</td><td><StatusPill status={item.status} /></td><td className="font-bold">...</td></tr>
+          ))}
+        </tbody>
+      </TableShell>
+    </section>
+  );
+
+  const renderDonors = () => (
+    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <Toolbar placeholder="Search donors...">
+        <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>All Donor Types</option></select>
+        <button className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white">Export</button>
+      </Toolbar>
+      <TableShell>
+        <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+          <tr><th className="px-4 py-3">Donor</th><th>Email</th><th>Total Donated</th><th>Campaigns Supported</th><th>Last Donation</th><th>Actions</th></tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {donors.map((item) => (
+            <tr key={item.email}><td className="px-4 py-4 font-bold">{item.name}</td><td>{item.email}</td><td>{item.donated}</td><td>{item.campaigns}</td><td>{item.last}</td><td className="font-bold">...</td></tr>
+          ))}
+        </tbody>
+      </TableShell>
+    </section>
+  );
+
+  function renderApprovals(compact = false) {
+    return (
+      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="font-bold text-slate-900">Pending Approvals</h2>
+          {compact && <button onClick={() => setActiveView("approvals")} className="text-sm font-bold text-teal-700">View all</button>}
+        </div>
+        <TableShell>
+          <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+            <tr><th className="px-4 py-3">Campaign</th><th>Submitted By</th><th>Category</th><th>Goal</th><th>Documents</th><th>Actions</th></tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {approvals.map((item) => (
+              <tr key={item.campaign}><td className="px-4 py-4 font-bold">{item.campaign}</td><td>{item.by}</td><td>{item.category}</td><td>{item.goal}</td><td>{item.docs}</td><td><button className="mr-2 rounded bg-teal-700 px-3 py-1 text-xs font-bold text-white">Approve</button><button className="rounded bg-red-50 px-3 py-1 text-xs font-bold text-red-600">Reject</button></td></tr>
+            ))}
+          </tbody>
+        </TableShell>
+      </section>
+    );
+  }
+
+  function renderRecentDonations() {
+    return (
+      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="mb-5 font-bold text-slate-900">Recent Donations</h2>
+        <div className="space-y-4">
+          {donations.slice(0, 3).map((item) => (
+            <div key={`${item.donor}-${item.amount}`} className="flex items-center justify-between rounded-md bg-slate-50 p-3">
+              <div><p className="font-bold text-slate-800">{item.donor}</p><p className="text-xs text-slate-500">{item.campaign} - {item.date}</p></div>
+              <p className="font-bold text-green-600">{item.amount}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  const renderReports = () => (
+    <>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard icon={CircleDollarSign} label="Total Raised" value="Rs 12,45,000" note="+10%" />
+        <StatCard icon={Inbox} label="Total Donations" value="820" note="+18%" />
+        <StatCard icon={Users} label="New Donors" value="124" note="+18%" />
+        <StatCard icon={BarChart3} label="Success Rate" value="64%" note="-2%" danger />
+      </div>
+      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="font-bold">Revenue Overview</h2>
+            <span className="text-xs font-bold text-green-600">+18% growth</span>
+          </div>
+          <div className="relative h-64 rounded-lg bg-slate-50 px-5 pb-10 pt-6">
+            <div className="absolute inset-x-5 top-1/4 border-t border-dashed border-slate-200" />
+            <div className="absolute inset-x-5 top-1/2 border-t border-dashed border-slate-200" />
+            <div className="absolute inset-x-5 top-3/4 border-t border-dashed border-slate-200" />
+            <div className="relative z-10 grid h-full grid-cols-6 items-end gap-4">
+              {[42, 58, 74, 92, 84, 118].map((height, index) => (
+                <div key={height} className="relative flex h-full items-end justify-center">
+                  <div
+                    className={`w-full max-w-14 rounded-t-md ${index === 5 ? "bg-teal-700" : "bg-teal-300"}`}
+                    style={{ height: `${height}%` }}
+                  />
+                  <span className="absolute -bottom-7 text-xs font-semibold text-slate-500">
+                    {["May 1", "May 5", "May 10", "May 15", "May 20", "May 25"][index]}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"><h2 className="mb-5 font-bold">Donations by Category</h2><div className="mx-auto flex h-44 w-44 items-center justify-center rounded-full border-[28px] border-teal-600 text-center font-bold">820<br />Total</div></section>
+      </div>
+    </>
+  );
+
+  const renderMessages = () => (
+    <section className="grid min-h-[620px] grid-cols-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm lg:grid-cols-[340px_1fr]">
+      <aside className="border-r border-slate-200">
+        <h2 className="border-b border-slate-200 p-5 font-bold">Conversations</h2>
+        {conversations.map((item) => (
+          <button key={item.name} className={`flex w-full gap-3 border-b border-slate-100 p-4 text-left ${item.active ? "bg-teal-50" : "hover:bg-slate-50"}`}>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-100 font-bold text-teal-700">{item.name[0]}</div>
+            <span><b className="block text-sm">{item.name}</b><span className="text-xs text-slate-500">{item.subject}</span></span>
+          </button>
+        ))}
+      </aside>
+      <div className="flex flex-col">
+        <header className="border-b border-slate-200 p-5 font-bold">Meena R. - Heart Surgery for Arjun</header>
+        <div className="flex-1 space-y-4 bg-slate-50 p-6">
+          <p className="max-w-md rounded-lg bg-white p-3 text-sm shadow-sm">Hello Admin, I have uploaded all required documents. Please review my campaign.</p>
+          <p className="ml-auto max-w-md rounded-lg bg-teal-50 p-3 text-sm text-teal-900 shadow-sm">Hello Meena, we are reviewing your documents. You will get an update soon.</p>
+        </div>
+        <footer className="flex gap-3 border-t border-slate-200 p-4"><input className="flex-1 rounded-md border border-slate-200 px-3 py-2 text-sm" placeholder="Type a message..." /><button className="rounded-md bg-teal-700 px-4 py-2 text-white">Send</button></footer>
+      </div>
+    </section>
+  );
+
+  const renderSettings = () => (
+    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mb-6 flex gap-6 border-b border-slate-200 text-sm font-bold text-slate-600">
+        {["Profile", "Platform Settings", "Security", "Notifications", "Payment Settings"].map((tab, index) => <button key={tab} className={`pb-3 ${index === 0 ? "border-b-2 border-teal-700 text-teal-700" : ""}`}>{tab}</button>)}
+      </div>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <div>
+          <h2 className="mb-5 font-bold">Admin Profile</h2>
+          <div className="mb-5 flex items-center gap-4"><div className="flex h-20 w-20 items-center justify-center rounded-full bg-teal-700 text-2xl font-bold text-white">AD</div><button className="text-sm font-bold text-teal-700">Change Photo</button></div>
+          {["Full Name", "Email", "Phone Number"].map((label) => <label key={label} className="mb-4 block text-sm font-bold text-slate-600">{label}<input className="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 font-normal" /></label>)}
+          <button className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white">Save Changes</button>
+        </div>
+        <div>
+          <h2 className="mb-5 font-bold">Change Password</h2>
+          {["Current Password", "New Password", "Confirm New Password"].map((label) => <label key={label} className="mb-4 block text-sm font-bold text-slate-600">{label}<input type="password" className="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 font-normal" /></label>)}
+          <button className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white">Update Password</button>
+        </div>
+      </div>
+    </section>
+  );
+
+  const content = {
+    dashboard: renderDashboard,
+    campaigns: renderCampaigns,
+    donations: renderDonations,
+    donors: renderDonors,
+    approvals: () => renderApprovals(false),
+    reports: renderReports,
+    messages: renderMessages,
+    settings: renderSettings,
+  };
 
   return (
     <main className="min-h-screen bg-slate-50">
-      <div className="flex min-h-screen w-full">
-        <aside className="hidden w-80 shrink-0 border-r border-teal-900/20 bg-teal-950 text-white lg:block">
-          <div className="sticky top-0 flex min-h-screen flex-col p-6">
-            <div className="mb-8 border-b border-white/10 pb-6">
-              <p className="text-xs font-bold uppercase tracking-[0.25em] text-teal-200">Admin Console</p>
-              <h2 className="mt-2 text-2xl font-bold">MyFundraiser</h2>
-            </div>
+      <div className="flex min-h-screen">
+        <aside className="hidden w-64 shrink-0 bg-slate-950 text-white lg:flex lg:flex-col">
+          <div className="flex h-16 items-center gap-2 border-b border-white/10 px-5">
+            <ShieldCheck size={18} />
+            <span className="text-sm font-bold">MyFundraiser</span>
+          </div>
 
-            <div className="mb-8 rounded-lg bg-white/10 p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-teal-400 font-bold text-teal-950">
-                  AD
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-bold">{adminName}</p>
-                  <p className="text-xs text-teal-100">Admin workspace</p>
-                </div>
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-2 text-center">
-                <div className="rounded-md bg-white/10 px-2 py-3">
-                  <p className="text-lg font-bold">38</p>
-                  <p className="text-[11px] text-teal-100">Campaigns</p>
-                </div>
-                <div className="rounded-md bg-white/10 px-2 py-3">
-                  <p className="text-lg font-bold">3</p>
-                  <p className="text-[11px] text-teal-100">Pending</p>
-                </div>
-              </div>
-            </div>
-
-            <p className="mb-3 px-3 text-xs font-bold uppercase tracking-wider text-teal-200">Manage</p>
-            <nav className="flex-1 space-y-2">
-              {navItems.map((item) => (
+          <nav className="flex-1 space-y-1 px-3 py-5">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const active = activeView === item.key;
+              return (
                 <button
-                  key={item.label}
-                  onClick={() => navigate(item.path)}
-                  className={`group flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm font-bold transition ${
-                    item.label === "Dashboard"
-                      ? "bg-white text-teal-900 shadow-md"
-                      : "text-teal-50 hover:bg-white/10"
-                  }`}
+                  key={item.key}
+                  onClick={() => setActiveView(item.key)}
+                  className={`flex w-full items-center justify-between rounded-md px-3 py-2.5 text-left text-sm font-bold ${active ? "bg-teal-700 text-white" : "text-slate-300 hover:bg-white/10"}`}
                 >
-                  <span className="flex items-center gap-3">
-                    <span className={`flex h-8 w-8 items-center justify-center rounded-md text-base ${
-                      item.label === "Dashboard" ? "bg-teal-100 text-teal-800" : "bg-white/10 text-teal-100 group-hover:bg-white/15"
-                    }`}>
-                      {item.icon}
-                    </span>
-                    {item.label}
-                  </span>
-                  {item.badge && (
-                    <span className="rounded-full bg-red-500 px-2.5 py-1 text-xs text-white">{item.badge}</span>
-                  )}
+                  <span className="flex items-center gap-3"><Icon size={16} />{item.label}</span>
+                  {item.badge && <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs text-white">{item.badge}</span>}
                 </button>
-              ))}
+              );
+            })}
+          </nav>
 
-            </nav>
-
-            <div className="mb-4 rounded-lg bg-white/10 p-4">
-              <p className="text-sm font-bold">System status</p>
-              <div className="mt-3 flex items-center justify-between text-xs text-teal-100">
-                <span>Backend API</span>
-                <span className="rounded-full bg-green-400/20 px-2 py-1 font-bold text-green-200">Online</span>
-              </div>
-            </div>
-
-            <button
-              onClick={() => {
-                localStorage.clear();
-                navigate("/loginSignup");
-              }}
-              className="w-full rounded-lg border border-red-300/30 bg-red-500/10 px-4 py-3 text-left text-sm font-bold text-red-100 hover:bg-red-500/20"
-            >
-              Logout
-            </button>
+          <div className="m-3 rounded-lg bg-teal-900/70 p-4">
+            <p className="text-sm font-bold">Upgrade to Pro</p>
+            <p className="mt-2 text-xs text-teal-100">Unlock advanced reports and analytics.</p>
+            <button className="mt-4 w-full rounded-md bg-white px-3 py-2 text-xs font-bold text-teal-800">Upgrade Now</button>
           </div>
         </aside>
 
-        <section className="min-w-0 flex-1 px-6 py-6">
-          <header className="mb-6 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <section className="min-w-0 flex-1">
+          <header className="flex h-16 items-center justify-between bg-teal-800 px-6 text-white">
+            <div className="flex items-center gap-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-teal-400 text-sm font-bold text-teal-950">AD</div>
               <div>
-                <h1 className="text-2xl font-bold text-slate-900">Good morning, {adminName}!</h1>
-                <p className="mt-2 max-w-3xl text-sm text-slate-500">
-                  Welcome back to your fundraiser dashboard. You have 3 pending approvals and 2 campaigns ending this week.
-                </p>
+                <p className="text-sm font-bold">Good morning, Admin!</p>
+                <p className="text-xs text-teal-100">Welcome back to your fundraiser dashboard.</p>
               </div>
-              <div className="rounded-md bg-teal-50 px-5 py-3 text-left xl:text-right">
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Raised today</p>
-                <p className="mt-1 text-xl font-bold text-teal-700">Rs 24.8L</p>
-              </div>
+            </div>
+            <div className="flex items-center gap-8 text-right">
+              <div><p className="text-xs text-teal-100">Rs 24.8L</p><p className="text-[11px] text-teal-100">Raised today</p></div>
+              <div><p className="text-xs text-teal-100">38</p><p className="text-[11px] text-teal-100">Active campaigns</p></div>
+              <div><p className="text-xs text-teal-100">1,247</p><p className="text-[11px] text-teal-100">Total donors</p></div>
+              <Bell size={18} />
             </div>
           </header>
 
-          <section className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {stats.map((stat) => (
-              <article key={stat.label} className="min-h-[132px] rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <p className="text-sm font-semibold text-slate-500">{stat.label}</p>
-                <p className="mt-3 text-3xl font-bold text-slate-900">{stat.value}</p>
-                <p className={`mt-3 text-xs font-semibold ${stat.tone}`}>{stat.note}</p>
-              </article>
-            ))}
-          </section>
-
-          <section className="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
-            <article className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <h2 className="text-base font-bold text-slate-800">Monthly Fundraising (Rs Lakhs)</h2>
-                <select className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm sm:w-auto">
-                  <option>This Month</option>
-                  <option>Last Month</option>
-                </select>
-              </div>
-              <div className="grid h-56 grid-cols-7 items-end gap-3 rounded-lg bg-slate-50 px-5 pb-9 pt-5">
-                {[
-                  ["Mon", 72],
-                  ["Tue", 96],
-                  ["Wed", 118],
-                  ["Thu", 140],
-                  ["Fri", 162],
-                  ["Sat", 126],
-                  ["Sun", 186],
-                ].map(([label, height], index) => (
-                  <div key={label} className="relative flex h-full items-end justify-center">
-                    <div
-                      className={`w-full max-w-14 rounded-t-md ${index === 6 ? "bg-teal-700" : "bg-teal-300"}`}
-                      style={{ height: `${height}px` }}
-                    />
-                    <span className="absolute -bottom-6 text-xs font-semibold text-slate-500">{label}</span>
-                  </div>
-                ))}
-              </div>
-            </article>
-
-            <article className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="mb-5 text-base font-bold text-slate-800">Campaign Categories</h2>
-              <div className="flex flex-col items-center gap-5 sm:flex-row xl:flex-col 2xl:flex-row">
-                <div className="flex h-32 w-32 shrink-0 items-center justify-center rounded-full bg-teal-700 text-3xl font-bold text-white">
-                  38
-                </div>
-                <div className="w-full space-y-3 text-sm text-slate-700">
-                  {[
-                    ["Medical", "40%"],
-                    ["Education", "22%"],
-                    ["Community", "14%"],
-                    ["Others", "24%"],
-                  ].map(([label, value]) => (
-                    <div key={label} className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-2">
-                      <span>{label}</span>
-                      <span className="font-bold text-slate-500">{value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </article>
-          </section>
-
-          <section className="mb-6 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <h2 className="text-base font-bold text-slate-800">Active Campaigns</h2>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <select className="rounded-md border border-slate-300 px-3 py-2 text-sm">
-                  <option>All status</option>
-                </select>
-                <button className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white hover:bg-teal-800">
-                  + New
-                </button>
-              </div>
+          <div className="p-6">
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-slate-950">{title}</h1>
+              <p className="mt-1 text-sm text-slate-500">Manage fundraiser operations from one clean workspace.</p>
             </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px] border-collapse text-left text-sm">
-                <thead>
-                  <tr className="border-b bg-slate-50 text-slate-500">
-                    <th className="px-4 py-3 font-bold">Campaign</th>
-                    <th className="px-4 py-3 font-bold">Organiser</th>
-                    <th className="px-4 py-3 font-bold">Category</th>
-                    <th className="px-4 py-3 font-bold">Goal</th>
-                    <th className="px-4 py-3 font-bold">Progress</th>
-                    <th className="px-4 py-3 font-bold">Status</th>
-                    <th className="px-4 py-3 font-bold">Deadline</th>
-                    <th className="px-4 py-3 font-bold">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {activeCampaigns.map((campaign) => (
-                    <tr key={campaign.title} className="text-slate-700">
-                      <td className="px-4 py-4 font-semibold">{campaign.title}</td>
-                      <td className="px-4 py-4">{campaign.organiser}</td>
-                      <td className="px-4 py-4">{campaign.category}</td>
-                      <td className="px-4 py-4">{campaign.goal}</td>
-                      <td className="px-4 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="h-3 w-36 rounded-full bg-slate-100">
-                            <div
-                              className="h-3 rounded-full bg-teal-700"
-                              style={{ width: `${campaign.progress}%` }}
-                            />
-                          </div>
-                          <span className="w-10 text-xs font-bold text-slate-500">{campaign.progress}%</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className={`rounded-full px-3 py-1 text-xs font-bold ${
-                          campaign.status === "Urgent"
-                            ? "bg-red-100 text-red-700"
-                            : "bg-green-100 text-green-700"
-                        }`}>
-                          {campaign.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4">{campaign.deadline}</td>
-                      <td className="px-4 py-4">
-                        <button className="rounded-md px-2 py-1 font-bold text-slate-500 hover:bg-slate-100">...</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <section className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-            <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm xl:col-span-1">
-              <h2 className="mb-4 text-base font-bold text-slate-800">Live Donations</h2>
-              <div className="space-y-4">
-                {recentDonations.map((donation) => (
-                  <div key={`${donation.name}-${donation.time}`} className="flex items-center justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-50 text-sm font-bold text-teal-700">
-                        {donation.name.split(" ").map((part) => part[0]).slice(0, 2).join("")}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-bold text-slate-800">{donation.name}</p>
-                        <p className="truncate text-xs text-slate-500">{donation.campaign} - {donation.time}</p>
-                      </div>
-                    </div>
-                    <p className="shrink-0 text-sm font-bold text-green-600">{donation.amount}</p>
-                  </div>
-                ))}
-              </div>
-            </article>
-
-            <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="mb-4 text-base font-bold text-slate-800">Pending Approvals</h2>
-              <div className="rounded-md bg-slate-50 p-4">
-                <p className="font-bold text-slate-800">Dialysis Fund for Deepa</p>
-                <p className="mt-1 text-sm text-slate-500">Medical - Goal: Rs 3,00,000</p>
-                <div className="mt-4 flex gap-2">
-                  <button className="rounded-md bg-teal-700 px-3 py-2 text-sm font-bold text-white">Approve</button>
-                  <button className="rounded-md border border-red-200 px-3 py-2 text-sm font-bold text-red-600">Reject</button>
-                </div>
-              </div>
-            </article>
-
-            <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="mb-4 text-base font-bold text-slate-800">Top Donors This Month</h2>
-              <div className="space-y-3">
-                {[
-                  ["Ravi Kumar", "Rs 50,000"],
-                  ["Venkat Naidu", "Rs 40,000"],
-                  ["Ananya Patel", "Rs 35,000"],
-                ].map(([name, amount], index) => (
-                  <div key={name} className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-2 text-sm">
-                    <span className="font-semibold text-slate-700">{index + 1}. {name}</span>
-                    <span className="font-bold text-slate-500">{amount}</span>
-                  </div>
-                ))}
-              </div>
-            </article>
-          </section>
+            {content[activeView]()}
+          </div>
         </section>
       </div>
     </main>
   );
-};
-
-export default AdminDashboard;
+}
