@@ -22,49 +22,54 @@ const Navbar = () => {
         MyFundraiser
       </h1>
 
-      <div className="flex space-x-8 text-lg relative">
+      <div className="flex space-x-8 text-lg relative" style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
 
-        <Link to="/" className="hover:text-gray-300">Home</Link>
+        <Link to="/" className="hover:text-gray-300" style={{ textDecoration: 'none', color: 'white' }}>Home</Link>
 
        
         <div
           className="relative"
           onMouseEnter={() => setShowContact(true)}
           onMouseLeave={() => setShowContact(false)}
+          style={{ position: 'relative' }}
         >
           <span className="cursor-pointer hover:text-gray-300">Contact</span>
 
           {showContact && (
-            <div className="absolute top-8 left-0 bg-white text-black p-4 rounded-lg shadow-xl w-52 z-50 border">
-              <p className="font-semibold">📞 Phone</p>
-              <p className="mb-2 text-sm">123-456-7890</p>
+            <div className="absolute top-8 left-0 bg-white text-black p-4 rounded-lg shadow-xl w-52 z-50 border" style={{ position: 'absolute', top: '30px', left: 0, backgroundColor: 'white', color: 'black', padding: '15px', borderRadius: '8px', boxShadow: '0 4px 10px rgba(0,0,0,0.15)', width: '200px', zIndex: 100, border: '1px solid #e5e7eb' }}>
+              <p className="font-semibold" style={{ margin: '0 0 5px 0', fontWeight: 600 }}>📞 Phone</p>
+              <p className="mb-2 text-sm" style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#4b5563' }}>123-456-7890</p>
 
-              <p className="font-semibold">📧 Email</p>
-              <p className="mb-2 text-sm">support@myfundraiser.com</p>
+              <p className="font-semibold" style={{ margin: '0 0 5px 0', fontWeight: 600 }}>📧 Email</p>
+              <p className="mb-2 text-sm" style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#4b5563' }}>support@myfundraiser.com</p>
 
-              <p className="font-semibold">📍 Address</p>
-              <p className="text-sm">Hyderabad, India</p>
+              <p className="font-semibold" style={{ margin: '0 0 5px 0', fontWeight: 600 }}>📍 Address</p>
+              <p className="text-sm" style={{ margin: 0, fontSize: '14px', color: '#4b5563' }}>Hyderabad, India</p>
             </div>
           )}
         </div>
 
        
         {!token ? (
-          <Link to="/loginSignup" className="hover:text-gray-300">
+          <Link to="/loginSignup" className="hover:text-gray-300" style={{ textDecoration: 'none', color: 'white' }}>
             Login / Signup
           </Link>
         ) : (
-          <>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             {role === "ADMIN" ? (
-              <Link to="/admin" className="hover:text-gray-300">Admin</Link>
+              <Link to="/admin" className="hover:text-gray-300" style={{ textDecoration: 'none', color: 'white' }}>Admin</Link>
             ) : (
-              <Link to="/dashboard" className="hover:text-gray-300">Dashboard</Link>
+              <Link to="/dashboard" className="hover:text-gray-300" style={{ textDecoration: 'none', color: 'white' }}>Dashboard</Link>
             )}
 
-            <button onClick={handleLogout} className="hover:text-red-300 font-semibold">
+            <button 
+              onClick={handleLogout} 
+              className="bg-teal-900 hover:bg-teal-950 text-white px-4 py-2 rounded-lg font-semibold transition" 
+              style={{ background: '#0e5c59', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}
+            >
               Logout
             </button>
-          </>
+          </div>
         )}
       </div>
     </nav>
