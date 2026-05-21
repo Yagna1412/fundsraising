@@ -100,8 +100,10 @@ const DetailRow = ({ label, value }) => (
 export default function UserDashboard() {
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
+  const [showAllDonations, setShowAllDonations] = useState(false);
   const storedDonations = JSON.parse(localStorage.getItem("userDonations")) || [];
   const donations = storedDonations.length > 0 ? storedDonations : defaultDonations;
+  const visibleDonations = showAllDonations ? donations : donations.slice(0, 4);
 
   const totalDonations = useMemo(
     () => donations.reduce((sum, donation) => sum + Number(donation.amount || 0), 0),
@@ -116,7 +118,7 @@ export default function UserDashboard() {
   const quickActions = [
     { title: "Explore Campaigns", text: "Find and support new causes", icon: <Star size={16} />, action: () => navigate("/campaigns") },
     { title: "Create a Fundraiser", text: "Start your own campaign", icon: <Landmark size={16} />, action: () => navigate("/create-fundraiser") },
-    { title: "Donation History", text: "View all your contributions", icon: <ClipboardList size={16} />, action: () => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }) },
+    { title: "Donation History", text: "View all your contributions", icon: <ClipboardList size={16} />, action: () => { setShowAllDonations(true); window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }); } },
     { title: "Account Settings", text: "Manage your profile and security", icon: <Settings size={16} />, action: () => setIsEditing(true) },
     { title: "Logout", text: "Sign out of your account", icon: <LogOut size={16} />, action: () => { localStorage.clear(); navigate("/loginSignup"); } },
   ];
@@ -259,8 +261,8 @@ export default function UserDashboard() {
           <Card className="p-6">
             <div className="mb-4 flex items-center justify-between">
               <SectionTitle icon={<ClipboardList size={24} />} title="Recent Donations" />
-              <button className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">
-                View All Donations
+              <button onClick={() => setShowAllDonations((current) => !current)} className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">
+                {showAllDonations ? "Show Recent" : "View All Donations"}
               </button>
             </div>
 
@@ -276,7 +278,7 @@ export default function UserDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white">
-                  {donations.map((donation, index) => {
+                  {visibleDonations.map((donation, index) => {
                     const detail = campaignDetails[donation.campaignId] || campaignDetails[1];
                     return (
                       <tr key={`${donation.campaignId}-${index}`}>
@@ -330,13 +332,31 @@ export default function UserDashboard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
           <Card className="w-full max-w-md p-6">
             <h2 className="text-xl font-bold text-teal-700">Edit Profile</h2>
-            <p className="mt-2 text-sm text-slate-600">Profile editing screen placeholder.</p>
-            <button
-              onClick={() => setIsEditing(false)}
-              className="mt-6 rounded-md bg-teal-700 px-5 py-2 text-sm font-bold text-white hover:bg-teal-800"
-            >
-              Close
-            </button>
+            <div className="mt-5 space-y-4">
+              {["Full Name", "Email", "Phone", "Address"].map((label) => (
+                <label key={label} className="block text-sm font-bold text-slate-600">
+                  {label}
+                  <input className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 font-normal" defaultValue={label === "Full Name" ? userProfile.name : label === "Email" ? userProfile.email : label === "Phone" ? userProfile.phone : userProfile.address} />
+                </label>
+              ))}
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setIsEditing(false)}
+                className="rounded-md border border-slate-300 px-5 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setIsEditing(false);
+                  window.alert("Profile changes saved.");
+                }}
+                className="rounded-md bg-teal-700 px-5 py-2 text-sm font-bold text-white hover:bg-teal-800"
+              >
+                Save Changes
+              </button>
+            </div>
           </Card>
         </div>
       )}

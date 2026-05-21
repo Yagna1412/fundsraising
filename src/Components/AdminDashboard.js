@@ -111,8 +111,47 @@ const TableShell = ({ children }) => (
 
 export default function AdminDashboard() {
   const [activeView, setActiveView] = useState("dashboard");
+  const [approvalItems, setApprovalItems] = useState(approvals);
+  const [selectedConversation, setSelectedConversation] = useState(conversations[0]);
+  const [messageDraft, setMessageDraft] = useState("");
+  const [sentMessages, setSentMessages] = useState([]);
+  const [settingsTab, setSettingsTab] = useState("Profile");
 
   const title = useMemo(() => navItems.find((item) => item.key === activeView)?.label || "Dashboard", [activeView]);
+
+  const notify = (message) => {
+    window.alert(message);
+  };
+
+  const downloadCsv = (filename, rows) => {
+    const headers = Object.keys(rows[0] || {});
+    const csv = [
+      headers.join(","),
+      ...rows.map((row) => headers.map((header) => `"${String(row[header]).replace(/"/g, '""')}"`).join(",")),
+    ].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleApproval = (campaign, action) => {
+    setApprovalItems((items) => items.filter((item) => item.campaign !== campaign));
+    notify(`${campaign} ${action}.`);
+  };
+
+  const handleSendMessage = () => {
+    if (!messageDraft.trim()) {
+      notify("Please type a message before sending.");
+      return;
+    }
+    setSentMessages((messages) => [...messages, { to: selectedConversation.name, text: messageDraft.trim() }]);
+    setMessageDraft("");
+    notify("Message sent.");
+  };
 
   const renderDashboard = () => (
     <>
@@ -190,7 +229,7 @@ export default function AdminDashboard() {
       <Toolbar placeholder="Search campaigns...">
         <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>All Categories</option></select>
         <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>All Status</option></select>
-        <button className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white">+ New Campaign</button>
+        <button onClick={() => notify("New campaign form will open here.")} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white">+ New Campaign</button>
       </Toolbar>
       <TableShell>
         <thead className="bg-slate-50 text-xs uppercase text-slate-500">
@@ -198,7 +237,7 @@ export default function AdminDashboard() {
         </thead>
         <tbody className="divide-y divide-slate-100">
           {campaigns.map((item) => (
-            <tr key={item.name}><td className="px-4 py-4 font-bold">{item.name}</td><td>{item.organiser}</td><td>{item.category}</td><td>{item.raised}</td><td>{item.goal}</td><td><Progress value={item.progress} /></td><td><StatusPill status={item.status} /></td><td>{item.deadline}</td><td className="font-bold">...</td></tr>
+            <tr key={item.name}><td className="px-4 py-4 font-bold">{item.name}</td><td>{item.organiser}</td><td>{item.category}</td><td>{item.raised}</td><td>{item.goal}</td><td><Progress value={item.progress} /></td><td><StatusPill status={item.status} /></td><td>{item.deadline}</td><td><button onClick={() => notify(`Viewing ${item.name}`)} className="font-bold">...</button></td></tr>
           ))}
         </tbody>
       </TableShell>
@@ -210,7 +249,7 @@ export default function AdminDashboard() {
       <Toolbar placeholder="Search donations...">
         <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>All Campaigns</option></select>
         <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>All Methods</option></select>
-        <button className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white">Export</button>
+        <button onClick={() => downloadCsv("donations.csv", donations)} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white">Export</button>
       </Toolbar>
       <TableShell>
         <thead className="bg-slate-50 text-xs uppercase text-slate-500">
@@ -218,7 +257,7 @@ export default function AdminDashboard() {
         </thead>
         <tbody className="divide-y divide-slate-100">
           {donations.map((item) => (
-            <tr key={`${item.donor}-${item.date}`}><td className="px-4 py-4 font-bold">{item.donor}</td><td>{item.campaign}</td><td>{item.amount}</td><td>{item.method}</td><td>{item.date}</td><td><StatusPill status={item.status} /></td><td className="font-bold">...</td></tr>
+            <tr key={`${item.donor}-${item.date}`}><td className="px-4 py-4 font-bold">{item.donor}</td><td>{item.campaign}</td><td>{item.amount}</td><td>{item.method}</td><td>{item.date}</td><td><StatusPill status={item.status} /></td><td><button onClick={() => notify(`Viewing donation from ${item.donor}`)} className="font-bold">...</button></td></tr>
           ))}
         </tbody>
       </TableShell>
@@ -229,7 +268,7 @@ export default function AdminDashboard() {
     <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <Toolbar placeholder="Search donors...">
         <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>All Donor Types</option></select>
-        <button className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white">Export</button>
+        <button onClick={() => downloadCsv("donors.csv", donors)} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white">Export</button>
       </Toolbar>
       <TableShell>
         <thead className="bg-slate-50 text-xs uppercase text-slate-500">
@@ -237,7 +276,7 @@ export default function AdminDashboard() {
         </thead>
         <tbody className="divide-y divide-slate-100">
           {donors.map((item) => (
-            <tr key={item.email}><td className="px-4 py-4 font-bold">{item.name}</td><td>{item.email}</td><td>{item.donated}</td><td>{item.campaigns}</td><td>{item.last}</td><td className="font-bold">...</td></tr>
+            <tr key={item.email}><td className="px-4 py-4 font-bold">{item.name}</td><td>{item.email}</td><td>{item.donated}</td><td>{item.campaigns}</td><td>{item.last}</td><td><button onClick={() => notify(`Viewing donor ${item.name}`)} className="font-bold">...</button></td></tr>
           ))}
         </tbody>
       </TableShell>
@@ -256,9 +295,12 @@ export default function AdminDashboard() {
             <tr><th className="px-4 py-3">Campaign</th><th>Submitted By</th><th>Category</th><th>Goal</th><th>Documents</th><th>Actions</th></tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {approvals.map((item) => (
-              <tr key={item.campaign}><td className="px-4 py-4 font-bold">{item.campaign}</td><td>{item.by}</td><td>{item.category}</td><td>{item.goal}</td><td>{item.docs}</td><td><button className="mr-2 rounded bg-teal-700 px-3 py-1 text-xs font-bold text-white">Approve</button><button className="rounded bg-red-50 px-3 py-1 text-xs font-bold text-red-600">Reject</button></td></tr>
+            {approvalItems.map((item) => (
+              <tr key={item.campaign}><td className="px-4 py-4 font-bold">{item.campaign}</td><td>{item.by}</td><td>{item.category}</td><td>{item.goal}</td><td>{item.docs}</td><td><button onClick={() => handleApproval(item.campaign, "approved")} className="mr-2 rounded bg-teal-700 px-3 py-1 text-xs font-bold text-white">Approve</button><button onClick={() => handleApproval(item.campaign, "rejected")} className="rounded bg-red-50 px-3 py-1 text-xs font-bold text-red-600">Reject</button></td></tr>
             ))}
+            {approvalItems.length === 0 && (
+              <tr><td className="px-4 py-6 text-center text-slate-500" colSpan="6">No pending approvals.</td></tr>
+            )}
           </tbody>
         </TableShell>
       </section>
@@ -324,19 +366,22 @@ export default function AdminDashboard() {
       <aside className="border-r border-slate-200">
         <h2 className="border-b border-slate-200 p-5 font-bold">Conversations</h2>
         {conversations.map((item) => (
-          <button key={item.name} className={`flex w-full gap-3 border-b border-slate-100 p-4 text-left ${item.active ? "bg-teal-50" : "hover:bg-slate-50"}`}>
+          <button onClick={() => setSelectedConversation(item)} key={item.name} className={`flex w-full gap-3 border-b border-slate-100 p-4 text-left ${selectedConversation.name === item.name ? "bg-teal-50" : "hover:bg-slate-50"}`}>
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-100 font-bold text-teal-700">{item.name[0]}</div>
             <span><b className="block text-sm">{item.name}</b><span className="text-xs text-slate-500">{item.subject}</span></span>
           </button>
         ))}
       </aside>
       <div className="flex flex-col">
-        <header className="border-b border-slate-200 p-5 font-bold">Meena R. - Heart Surgery for Arjun</header>
+        <header className="border-b border-slate-200 p-5 font-bold">{selectedConversation.name} - {selectedConversation.subject}</header>
         <div className="flex-1 space-y-4 bg-slate-50 p-6">
           <p className="max-w-md rounded-lg bg-white p-3 text-sm shadow-sm">Hello Admin, I have uploaded all required documents. Please review my campaign.</p>
           <p className="ml-auto max-w-md rounded-lg bg-teal-50 p-3 text-sm text-teal-900 shadow-sm">Hello Meena, we are reviewing your documents. You will get an update soon.</p>
+          {sentMessages.filter((message) => message.to === selectedConversation.name).map((message, index) => (
+            <p key={`${message.to}-${index}`} className="ml-auto max-w-md rounded-lg bg-teal-700 p-3 text-sm text-white shadow-sm">{message.text}</p>
+          ))}
         </div>
-        <footer className="flex gap-3 border-t border-slate-200 p-4"><input className="flex-1 rounded-md border border-slate-200 px-3 py-2 text-sm" placeholder="Type a message..." /><button className="rounded-md bg-teal-700 px-4 py-2 text-white">Send</button></footer>
+        <footer className="flex gap-3 border-t border-slate-200 p-4"><input value={messageDraft} onChange={(event) => setMessageDraft(event.target.value)} className="flex-1 rounded-md border border-slate-200 px-3 py-2 text-sm" placeholder="Type a message..." /><button onClick={handleSendMessage} className="rounded-md bg-teal-700 px-4 py-2 text-white">Send</button></footer>
       </div>
     </section>
   );
@@ -344,19 +389,20 @@ export default function AdminDashboard() {
   const renderSettings = () => (
     <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <div className="mb-6 flex gap-6 border-b border-slate-200 text-sm font-bold text-slate-600">
-        {["Profile", "Platform Settings", "Security", "Notifications", "Payment Settings"].map((tab, index) => <button key={tab} className={`pb-3 ${index === 0 ? "border-b-2 border-teal-700 text-teal-700" : ""}`}>{tab}</button>)}
+        {["Profile", "Platform Settings", "Security", "Notifications", "Payment Settings"].map((tab) => <button onClick={() => setSettingsTab(tab)} key={tab} className={`pb-3 ${settingsTab === tab ? "border-b-2 border-teal-700 text-teal-700" : ""}`}>{tab}</button>)}
       </div>
+      <p className="mb-5 text-sm font-semibold text-slate-500">Current tab: {settingsTab}</p>
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         <div>
           <h2 className="mb-5 font-bold">Admin Profile</h2>
-          <div className="mb-5 flex items-center gap-4"><div className="flex h-20 w-20 items-center justify-center rounded-full bg-teal-700 text-2xl font-bold text-white">AD</div><button className="text-sm font-bold text-teal-700">Change Photo</button></div>
+          <div className="mb-5 flex items-center gap-4"><div className="flex h-20 w-20 items-center justify-center rounded-full bg-teal-700 text-2xl font-bold text-white">AD</div><button onClick={() => notify("Photo picker will open here.")} className="text-sm font-bold text-teal-700">Change Photo</button></div>
           {["Full Name", "Email", "Phone Number"].map((label) => <label key={label} className="mb-4 block text-sm font-bold text-slate-600">{label}<input className="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 font-normal" /></label>)}
-          <button className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white">Save Changes</button>
+          <button onClick={() => notify("Profile changes saved.")} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white">Save Changes</button>
         </div>
         <div>
           <h2 className="mb-5 font-bold">Change Password</h2>
           {["Current Password", "New Password", "Confirm New Password"].map((label) => <label key={label} className="mb-4 block text-sm font-bold text-slate-600">{label}<input type="password" className="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 font-normal" /></label>)}
-          <button className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white">Update Password</button>
+          <button onClick={() => notify("Password updated.")} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white">Update Password</button>
         </div>
       </div>
     </section>
@@ -402,7 +448,7 @@ export default function AdminDashboard() {
           <div className="m-3 rounded-lg bg-teal-900/70 p-4">
             <p className="text-sm font-bold">Upgrade to Pro</p>
             <p className="mt-2 text-xs text-teal-100">Unlock advanced reports and analytics.</p>
-            <button className="mt-4 w-full rounded-md bg-white px-3 py-2 text-xs font-bold text-teal-800">Upgrade Now</button>
+            <button onClick={() => notify("Upgrade request submitted.")} className="mt-4 w-full rounded-md bg-white px-3 py-2 text-xs font-bold text-teal-800">Upgrade Now</button>
           </div>
         </aside>
 

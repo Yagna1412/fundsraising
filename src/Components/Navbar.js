@@ -5,7 +5,6 @@ const Navbar = () => {
   const navigate = useNavigate();
   const [showContact, setShowContact] = useState(false);
 
-  const role = localStorage.getItem("role");
   const token = localStorage.getItem("token");
 
   const handleLogout = () => {
