@@ -14,12 +14,18 @@ import Campaigns from "./Components/Campaigns";
 import Donate from "./Components/Donate";
 import Footer from "./Components/Footer";
 import AdminDashboard from "./Components/AdminDashboard";
+import ChatBot from "./Components/ChatBot";
 
-const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = ({ children, role }) => {
 	const token = localStorage.getItem("token");
+	const currentRole = localStorage.getItem("role");
 
 	if (!token) {
 		return <Navigate to="/loginSignup" replace />;
+	}
+
+	if (role && currentRole !== role && currentRole !== "ADMIN") {
+		return <Navigate to="/unauthorized" replace />;
 	}
 
 	return children;
@@ -125,6 +131,8 @@ element={<Unauthorized />}
 </Routes>
 
 </div>
+
+<ChatBot />
 
 <Footer />
 

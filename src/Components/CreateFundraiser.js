@@ -77,6 +77,7 @@ const CreateFundraiser = () => {
       id: Date.now(),
       ...form,
       raised: 0,
+      status: "Pending Review",
       createdAt:
         new Date().toLocaleString()
     });
@@ -87,10 +88,10 @@ const CreateFundraiser = () => {
     );
 
     alert(
-      "Fundraiser created successfully 🎉"
+      "Fundraiser submitted successfully. It will appear in the admin dashboard for review."
     );
 
-    navigate("/dashboard");
+    navigate("/campaigns");
   };
 
   return (

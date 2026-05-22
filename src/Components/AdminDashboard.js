@@ -5,14 +5,20 @@ import {
   Bell,
   CheckCircle,
   CircleDollarSign,
+  Edit3,
+  Eye,
   FileText,
   Home,
   Inbox,
   LayoutDashboard,
   MessageSquare,
+  PauseCircle,
+  PlayCircle,
+  RotateCcw,
   Search,
   Settings,
   ShieldCheck,
+  TrendingUp,
   Users,
 } from "lucide-react";
 
@@ -24,6 +30,29 @@ const campaigns = [
   { name: "Cancer Treatment Fund", organiser: "Ramesh P.", category: "Medical", raised: "Rs 82,000", goal: "Rs 4,00,000", progress: 61, status: "Active", deadline: "Jun 30" },
 ];
 
+const getSubmittedFundraisers = () => {
+  try {
+    const stored = JSON.parse(localStorage.getItem("userFunds")) || [];
+    return stored.map((fundraiser) => ({
+      name: fundraiser.title || "Untitled Fundraiser",
+      organiser: fundraiser.creator || "Submitted User",
+      category: fundraiser.category || "General",
+      raised: `Rs ${Number(fundraiser.raised || 0).toLocaleString("en-IN")}`,
+      goal: `Rs ${Number(fundraiser.goalAmount || 0).toLocaleString("en-IN")}`,
+      progress: 0,
+      status: fundraiser.status || "Pending Review",
+      deadline: fundraiser.endDate || "Not set",
+      description: fundraiser.description || "No description provided.",
+      beneficiary: fundraiser.beneficiary || "Not specified",
+      image: fundraiser.image,
+      submittedAt: fundraiser.createdAt || "Recently",
+      source: "Submitted Fundraiser",
+    }));
+  } catch {
+    return [];
+  }
+};
+
 const donations = [
   { donor: "Ravi Kumar", campaign: "Heart Surgery for Arjun", amount: "Rs 5,000", method: "UPI", date: "May 21, 2026 - 10:30 AM", status: "Success" },
   { donor: "Ananya Patel", campaign: "Flood Relief - Warangal", amount: "Rs 10,000", method: "Card", date: "May 21, 2026 - 10:20 AM", status: "Success" },
@@ -33,11 +62,11 @@ const donations = [
 ];
 
 const donors = [
-  { name: "Ravi Kumar", email: "ravi.kumar@email.com", donated: "Rs 50,000", campaigns: 5, last: "May 21, 2026" },
-  { name: "Ananya Patel", email: "ananya.patel@email.com", donated: "Rs 35,000", campaigns: 3, last: "May 21, 2026" },
-  { name: "Venkat Naidu", email: "venkat.naidu@email.com", donated: "Rs 40,000", campaigns: 4, last: "May 21, 2026" },
-  { name: "Sanjay Singh", email: "sanjay.singh@email.com", donated: "Rs 22,500", campaigns: 2, last: "May 21, 2026" },
-  { name: "Lakshmi M.", email: "lakshmi@email.com", donated: "Rs 15,000", campaigns: 2, last: "May 21, 2026" },
+  { name: "Ravi Kumar", email: "ravi.kumar@email.com", donated: "Rs 50,000", campaigns: 5, last: "May 21, 2026", status: "Active" },
+  { name: "Ananya Patel", email: "ananya.patel@email.com", donated: "Rs 35,000", campaigns: 3, last: "May 21, 2026", status: "Active" },
+  { name: "Venkat Naidu", email: "venkat.naidu@email.com", donated: "Rs 40,000", campaigns: 4, last: "May 21, 2026", status: "Inactive" },
+  { name: "Sanjay Singh", email: "sanjay.singh@email.com", donated: "Rs 22,500", campaigns: 2, last: "May 21, 2026", status: "Active" },
+  { name: "Lakshmi M.", email: "lakshmi@email.com", donated: "Rs 15,000", campaigns: 2, last: "May 21, 2026", status: "Inactive" },
 ];
 
 const LIFE_SAVING_IMAGE = "https://images.unsplash.com/photo-1531746790731-6c087fecd65a?auto=format&fit=crop&w=1600&q=80";
@@ -67,25 +96,92 @@ const navItems = [
   { key: "settings", label: "Settings", icon: Settings },
 ];
 
-const StatCard = ({ icon: Icon, label, value, note, danger }) => (
-  <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-teal-50 text-teal-700">
+const categoryStats = [
+  { name: "Medical", value: 40, color: "#0f766e", bg: "bg-teal-50", text: "text-teal-700" },
+  { name: "Education", value: 22, color: "#2563eb", bg: "bg-blue-50", text: "text-blue-700" },
+  { name: "Community", value: 14, color: "#7c3aed", bg: "bg-violet-50", text: "text-violet-700" },
+  { name: "Others", value: 24, color: "#ea580c", bg: "bg-orange-50", text: "text-orange-700" },
+];
+
+const statusStyles = {
+  Active: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  Success: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  Completed: "bg-sky-50 text-sky-700 ring-sky-200",
+  Urgent: "bg-red-50 text-red-700 ring-red-200",
+  Pending: "bg-amber-50 text-amber-700 ring-amber-200",
+  "Pending Review": "bg-amber-50 text-amber-700 ring-amber-200",
+  Paused: "bg-slate-100 text-slate-700 ring-slate-200",
+  Inactive: "bg-slate-100 text-slate-600 ring-slate-200",
+  Refunded: "bg-purple-50 text-purple-700 ring-purple-200",
+};
+
+const statusMeters = {
+  Active: { value: 100, color: "bg-emerald-500" },
+  Success: { value: 100, color: "bg-emerald-500" },
+  Completed: { value: 100, color: "bg-sky-500" },
+  Urgent: { value: 82, color: "bg-red-500" },
+  Pending: { value: 58, color: "bg-amber-500" },
+  Paused: { value: 34, color: "bg-slate-500" },
+  Inactive: { value: 22, color: "bg-slate-400" },
+  Refunded: { value: 100, color: "bg-purple-500" },
+  "Pending Review": { value: 62, color: "bg-amber-500" },
+};
+
+const actionStyles = {
+  primary: "bg-teal-700 text-white hover:bg-teal-800",
+  neutral: "bg-slate-100 text-slate-700 hover:bg-slate-200",
+  info: "bg-blue-50 text-blue-700 hover:bg-blue-100",
+  warning: "bg-amber-50 text-amber-700 hover:bg-amber-100",
+  danger: "bg-red-50 text-red-700 hover:bg-red-100",
+  success: "bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
+};
+
+const StatCard = ({ icon: Icon, label, value, note, danger, tone = "teal" }) => {
+  const tones = {
+    teal: "bg-teal-50 text-teal-700 ring-teal-100",
+    blue: "bg-blue-50 text-blue-700 ring-blue-100",
+    violet: "bg-violet-50 text-violet-700 ring-violet-100",
+    amber: "bg-amber-50 text-amber-700 ring-amber-100",
+  };
+
+  return (
+  <div className="kpi-card rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-full ring-1 ${tones[tone]}`}>
       <Icon size={18} />
     </div>
     <p className="text-sm font-semibold text-slate-500">{label}</p>
     <p className="mt-2 text-2xl font-bold text-slate-950">{value}</p>
     {note && <p className={`mt-2 text-xs font-semibold ${danger ? "text-red-600" : "text-green-600"}`}>{note}</p>}
   </div>
-);
+  );
+};
 
 const StatusPill = ({ status }) => {
-  const style = status === "Urgent"
-    ? "bg-red-50 text-red-700"
-    : status === "Pending" || status === "Paused"
-      ? "bg-amber-50 text-amber-700"
-      : "bg-green-50 text-green-700";
-  return <span className={`rounded-full px-3 py-1 text-xs font-bold ${style}`}>{status}</span>;
+  const style = statusStyles[status] || "bg-slate-100 text-slate-700 ring-slate-200";
+  return <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ring-1 ${style}`}>{status}</span>;
 };
+
+const StatusCell = ({ status }) => {
+  const meter = statusMeters[status] || { value: 50, color: "bg-slate-500" };
+  return (
+    <div className="status-cell min-w-[132px] max-w-[190px]">
+      <StatusPill status={status} />
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+        <div className={`h-full rounded-full ${meter.color}`} style={{ width: `${meter.value}%` }} />
+      </div>
+    </div>
+  );
+};
+
+const ActionButton = ({ children, icon: Icon, tone = "neutral", ...props }) => (
+  <button
+    {...props}
+    className={`inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-bold ${actionStyles[tone]} ${props.className || ""}`}
+  >
+    {Icon && <Icon size={13} />}
+    {children}
+  </button>
+);
 
 const Progress = ({ value }) => (
   <div className="flex items-center gap-3">
@@ -97,18 +193,18 @@ const Progress = ({ value }) => (
 );
 
 const Toolbar = ({ placeholder, children }) => (
-  <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+  <div className="admin-toolbar mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     <label className="relative w-full md:max-w-sm">
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
       <input className="w-full rounded-md border border-slate-200 py-2 pl-9 pr-3 text-sm outline-none focus:border-teal-600" placeholder={placeholder} />
     </label>
-    <div className="flex flex-wrap gap-2">{children}</div>
+    <div className="admin-toolbar-actions flex flex-wrap gap-2">{children}</div>
   </div>
 );
 
 const TableShell = ({ children }) => (
-  <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-    <table className="w-full min-w-[900px] border-collapse text-left text-sm">{children}</table>
+  <div className="admin-table overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+    <table className="w-full min-w-[1120px] border-collapse text-left text-sm">{children}</table>
   </div>
 );
 
@@ -150,9 +246,9 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
 
   // Local editable state so actions reflect immediately in UI
-  const [campaignsState, setCampaignsState] = useState(campaigns);
+  const [campaignsState, setCampaignsState] = useState(() => [...getSubmittedFundraisers(), ...campaigns]);
   const [donationsState, setDonationsState] = useState(donations);
-  const [donorsState] = useState(donors);
+  const [donorsState, setDonorsState] = useState(donors);
 
   // Website settings for fundraiser site
   const [websiteForm, setWebsiteForm] = useState({
@@ -215,6 +311,16 @@ export default function AdminDashboard() {
   };
 
   const title = useMemo(() => navItems.find((item) => item.key === activeView)?.label || "Dashboard", [activeView]);
+  const userStats = useMemo(() => {
+    const active = donorsState.filter((donor) => donor.status === "Active").length;
+    const inactive = donorsState.length - active;
+    return {
+      total: donorsState.length,
+      active,
+      inactive,
+      returning: donorsState.filter((donor) => donor.campaigns > 2).length,
+    };
+  }, [donorsState]);
 
   const notify = (message) => {
     window.alert(message);
@@ -284,6 +390,11 @@ export default function AdminDashboard() {
     setShowEditCampaignForm(false);
   };
 
+  const handleCampaignStatusChange = (campaignName, status) => {
+    setCampaignsState((list) => list.map((campaign) => (campaign.name === campaignName ? { ...campaign, status } : campaign)));
+    notify(`Campaign "${campaignName}" marked as ${status}.`);
+  };
+
   const handleInitiateRefund = (donation) => {
     setSelectedItem(donation);
     setRefundForm({ donationId: `${donation.donor}-${donation.date}`, reason: "", processRefund: false });
@@ -310,6 +421,12 @@ export default function AdminDashboard() {
   const handleViewDonorProfile = (donor) => {
     setSelectedItem(donor);
     setShowDonorDetailsModal(true);
+  };
+
+  const handleDonorStatusChange = (email) => {
+    setDonorsState((list) =>
+      list.map((donor) => (donor.email === email ? { ...donor, status: donor.status === "Active" ? "Inactive" : "Active" } : donor))
+    );
   };
 
   // Modal Components
@@ -419,6 +536,24 @@ export default function AdminDashboard() {
               <p className="text-xs font-bold text-slate-500">Deadline</p>
               <p className="text-sm font-bold text-slate-900">{selectedItem.deadline}</p>
             </div>
+            {selectedItem.beneficiary && (
+              <div>
+                <p className="text-xs font-bold text-slate-500">Beneficiary</p>
+                <p className="text-sm font-bold text-slate-900">{selectedItem.beneficiary}</p>
+              </div>
+            )}
+            {selectedItem.submittedAt && (
+              <div>
+                <p className="text-xs font-bold text-slate-500">Submitted</p>
+                <p className="text-sm font-bold text-slate-900">{selectedItem.submittedAt}</p>
+              </div>
+            )}
+            {selectedItem.description && (
+              <div className="col-span-2 rounded-xl bg-slate-50 p-4">
+                <p className="text-xs font-bold text-slate-500">Campaign Story</p>
+                <p className="mt-2 text-sm leading-6 text-slate-700">{selectedItem.description}</p>
+              </div>
+            )}
           </div>
           <button onClick={() => setShowCampaignDetailsModal(false)} className="w-full rounded-md bg-teal-700 px-4 py-2 font-bold text-white hover:bg-teal-800 transition-colors">
             Close
@@ -470,13 +605,13 @@ export default function AdminDashboard() {
   const renderDashboard = () => (
     <>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard icon={CircleDollarSign} label="Total Raised" value="Rs 24.8L" note="+12% from last month" />
-        <StatCard icon={Home} label="Active Campaigns" value="38" note="+5 new this week" />
-        <StatCard icon={Users} label="Total Donors" value="1,247" note="+89 this week" />
-        <StatCard icon={BarChart3} label="Success Rate" value="64%" note="-2% from last month" danger />
+        <StatCard icon={CircleDollarSign} label="Total Raised" value="Rs 24.8L" note="+12% from last month" tone="teal" />
+        <StatCard icon={Home} label="Active Campaigns" value="38" note="+5 new this week" tone="blue" />
+        <StatCard icon={Users} label="Total Users" value="1,247" note={`${userStats.active} active in this list`} tone="violet" />
+        <StatCard icon={BarChart3} label="Success Rate" value="64%" note="-2% from last month" danger tone="amber" />
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.8fr)_minmax(340px,0.8fr)_minmax(280px,0.75fr)]">
+      <div className="mt-6 grid grid-cols-1 gap-6 2xl:grid-cols-[minmax(0,1.6fr)_minmax(360px,0.75fr)_minmax(320px,0.65fr)]">
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-5 flex items-center justify-between">
             <h2 className="font-bold text-slate-900">Monthly Fundraising (Rs Lakhs)</h2>
@@ -496,14 +631,25 @@ export default function AdminDashboard() {
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="mb-5 font-bold text-slate-900">Campaign Categories</h2>
           <div className="flex items-center gap-5">
-            <div className="flex h-36 w-36 shrink-0 items-center justify-center rounded-full border-[18px] border-teal-600 bg-white text-center text-xl font-bold text-teal-800">
-              38<br /><span className="text-xs font-semibold text-slate-500">Total</span>
+            <div
+              className="relative flex h-36 w-36 shrink-0 items-center justify-center rounded-full text-center"
+              style={{
+                background:
+                  "conic-gradient(#0f766e 0 40%, #2563eb 40% 62%, #7c3aed 62% 76%, #ea580c 76% 100%)",
+              }}
+            >
+              <div className="flex h-[94px] w-[94px] items-center justify-center rounded-full bg-white text-xl font-bold text-teal-800 shadow-inner">
+                38<span className="ml-1 text-xs font-semibold text-slate-500">Total</span>
+              </div>
             </div>
             <div className="w-full space-y-3 text-sm">
-              {["Medical 40%", "Education 22%", "Community 14%", "Others 24%"].map((item) => (
-                <div key={item} className="flex justify-between rounded-md bg-slate-50 px-3 py-2">
-                  <span>{item.split(" ")[0]}</span>
-                  <b>{item.split(" ")[1]}</b>
+              {categoryStats.map((item) => (
+                <div key={item.name} className={`flex items-center justify-between rounded-md px-3 py-2 ${item.bg}`}>
+                  <span className="flex items-center gap-2 font-semibold text-slate-800">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                    {item.name}
+                  </span>
+                  <b className={item.text}>{item.value}%</b>
                 </div>
               ))}
             </div>
@@ -532,7 +678,7 @@ export default function AdminDashboard() {
         </section>
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[1fr_1fr]">
+      <div className="mt-6 grid grid-cols-1 gap-6 2xl:grid-cols-[0.95fr_1.35fr]">
         {renderRecentDonations()}
         {renderApprovals(true)}
       </div>
@@ -541,6 +687,12 @@ export default function AdminDashboard() {
 
   const renderCampaigns = () => (
     <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-4">
+        <StatCard icon={Home} label="All Campaigns" value={campaignsState.length} note="Admin managed campaigns" tone="blue" />
+        <StatCard icon={CheckCircle} label="Active" value={campaignsState.filter((item) => item.status === "Active").length} note="Currently accepting funds" tone="teal" />
+        <StatCard icon={FileText} label="Pending Review" value={campaignsState.filter((item) => item.status === "Pending Review").length} note="Submitted fundraisers" tone="amber" />
+        <StatCard icon={BarChart3} label="Urgent" value={campaignsState.filter((item) => item.status === "Urgent").length} note="Needs priority attention" danger tone="amber" />
+      </div>
       <Toolbar placeholder="Search campaigns...">
         <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>All Categories</option></select>
         <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>All Status</option></select>
@@ -548,24 +700,34 @@ export default function AdminDashboard() {
       </Toolbar>
       <TableShell>
         <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-          <tr><th className="px-4 py-3">Campaign</th><th>Organiser</th><th>Category</th><th>Raised</th><th>Goal</th><th>Progress</th><th>Status</th><th>Deadline</th><th>Actions</th></tr>
+          <tr><th className="px-5 py-4">Campaign</th><th>Organiser</th><th>Category</th><th>Raised</th><th>Goal</th><th>Progress</th><th>Status</th><th>Deadline</th><th className="min-w-[310px]">Actions</th></tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
           {campaignsState.map((item) => (
             <tr key={item.name} className="transition-colors hover:bg-slate-50 cursor-pointer">
-              <td className="px-4 py-4 font-bold">{item.name}</td>
+              <td className="px-5 py-5 font-bold">{item.name}</td>
               <td>{item.organiser}</td>
               <td>{item.category}</td>
               <td>{item.raised}</td>
               <td>{item.goal}</td>
               <td><Progress value={item.progress} /></td>
-              <td><StatusPill status={item.status} /></td>
+              <td><StatusCell status={item.status} /></td>
               <td>{item.deadline}</td>
-              <td className="px-4 py-4">
-                <div className="flex gap-2 flex-wrap">
-                  <button onClick={() => handleViewCampaignDetails(item)} className="text-xs font-bold text-teal-700 hover:text-teal-800 transition-colors">View</button>
-                  <button onClick={() => handleEditCampaign(item)} className="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors">Edit</button>
-                  <button onClick={() => { setCampaignsState((list) => list.map((c) => c.name === item.name ? { ...c, status: c.status === 'Paused' ? 'Active' : 'Paused' } : c)); notify(`Campaign ${item.name} status toggled`); }} className="text-xs font-bold text-amber-600 hover:text-amber-700 transition-colors">Pause</button>
+              <td className="px-5 py-5">
+                <div className="table-actions flex flex-wrap gap-2">
+                  <ActionButton onClick={() => handleViewCampaignDetails(item)} icon={Eye} tone="info">View</ActionButton>
+                  <ActionButton onClick={() => handleEditCampaign(item)} icon={Edit3} tone="neutral">Edit</ActionButton>
+                  {item.status === "Pending Review" && (
+                    <ActionButton onClick={() => handleCampaignStatusChange(item.name, "Active")} icon={CheckCircle} tone="primary">Approve</ActionButton>
+                  )}
+                  {item.status === "Paused" ? (
+                    <ActionButton onClick={() => handleCampaignStatusChange(item.name, "Active")} icon={PlayCircle} tone="success">Activate</ActionButton>
+                  ) : (
+                    <ActionButton onClick={() => handleCampaignStatusChange(item.name, "Paused")} icon={PauseCircle} tone="warning">Pause</ActionButton>
+                  )}
+                  {item.status !== "Urgent" && (
+                    <ActionButton onClick={() => handleCampaignStatusChange(item.name, "Urgent")} tone="danger">Urgent</ActionButton>
+                  )}
                 </div>
               </td>
             </tr>
@@ -607,11 +769,25 @@ export default function AdminDashboard() {
       </Toolbar>
       <TableShell>
         <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-          <tr><th className="px-4 py-3">Donor</th><th>Campaign</th><th>Amount</th><th>Method</th><th>Date & Time</th><th>Status</th><th>Actions</th></tr>
+          <tr><th className="px-5 py-4">Donor</th><th>Campaign</th><th>Amount</th><th>Method</th><th>Date & Time</th><th>Status</th><th className="min-w-[230px]">Actions</th></tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
           {donationsState.map((item) => (
-            <tr key={`${item.donor}-${item.date}`}><td className="px-4 py-4 font-bold">{item.donor}</td><td>{item.campaign}</td><td>{item.amount}</td><td>{item.method}</td><td>{item.date}</td><td><StatusPill status={item.status} /></td><td className="px-4 py-4"><div className="flex gap-2"><button onClick={() => notify(`Viewing donation from ${item.donor}`)} className="text-xs font-bold text-teal-700 hover:text-teal-800">View</button>{item.status === "Success" && <button onClick={() => handleInitiateRefund(item)} className="text-xs font-bold text-rose-600 hover:text-rose-700">Refund</button>}</div></td></tr>
+            <tr key={`${item.donor}-${item.date}`}>
+              <td className="px-5 py-5 font-bold">{item.donor}</td>
+              <td>{item.campaign}</td>
+              <td>{item.amount}</td>
+              <td>{item.method}</td>
+              <td>{item.date}</td>
+              <td><StatusCell status={item.status} /></td>
+              <td className="px-5 py-5">
+                <div className="table-actions flex flex-wrap gap-2">
+                  <ActionButton onClick={() => notify(`Viewing donation from ${item.donor}`)} icon={Eye} tone="info">View</ActionButton>
+                  {item.status === "Success" && <ActionButton onClick={() => handleInitiateRefund(item)} icon={RotateCcw} tone="danger">Refund</ActionButton>}
+                  {item.status === "Pending" && <ActionButton onClick={() => notify(`Following up on pending payment from ${item.donor}`)} tone="warning">Follow Up</ActionButton>}
+                </div>
+              </td>
+            </tr>
           ))}
         </tbody>
       </TableShell>
@@ -621,17 +797,91 @@ export default function AdminDashboard() {
 
   const renderDonors = () => (
     <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-4">
+        <StatCard icon={Users} label="Total Users" value={userStats.total} note="All registered donors" tone="violet" />
+        <StatCard icon={CheckCircle} label="Active Users" value={userStats.active} note="Recently engaged" tone="teal" />
+        <StatCard icon={PauseCircle} label="Inactive Users" value={userStats.inactive} note="Needs follow-up" danger tone="amber" />
+        <StatCard icon={RotateCcw} label="Returning Users" value={userStats.returning} note="3+ campaigns supported" tone="blue" />
+      </div>
+      <div className="mb-5 grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+        <div className="dashboard-card rounded-2xl border border-slate-200 bg-white p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="font-bold text-slate-950">User Activity Dashboard</h2>
+              <p className="text-xs font-semibold text-slate-500">Active and inactive user distribution</p>
+            </div>
+            <TrendingUp className="text-teal-700" size={18} />
+          </div>
+          <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-teal-500 to-emerald-500"
+              style={{ width: `${Math.round((userStats.active / Math.max(userStats.total, 1)) * 100)}%` }}
+            />
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="rounded-xl bg-emerald-50 p-4">
+              <p className="text-xs font-bold uppercase text-emerald-700">Active ratio</p>
+              <p className="mt-1 text-2xl font-black text-emerald-800">{Math.round((userStats.active / Math.max(userStats.total, 1)) * 100)}%</p>
+            </div>
+            <div className="rounded-xl bg-slate-100 p-4">
+              <p className="text-xs font-bold uppercase text-slate-600">Inactive ratio</p>
+              <p className="mt-1 text-2xl font-black text-slate-800">{Math.round((userStats.inactive / Math.max(userStats.total, 1)) * 100)}%</p>
+            </div>
+          </div>
+        </div>
+        <div className="dashboard-card rounded-2xl border border-slate-200 bg-white p-5">
+          <h2 className="mb-4 font-bold text-slate-950">Top Supporters</h2>
+          <div className="space-y-3">
+            {donorsState.slice(0, 3).map((donor) => (
+              <div key={donor.email} className="flex items-center justify-between rounded-xl bg-slate-50 p-3">
+                <div>
+                  <p className="font-bold text-slate-900">{donor.name}</p>
+                  <p className="text-xs text-slate-500">{donor.campaigns} campaigns supported</p>
+                </div>
+                <p className="font-black text-teal-700">{donor.donated}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
       <Toolbar placeholder="Search donors...">
         <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>All Donor Types</option></select>
         <button onClick={() => downloadCsv("donors.csv", donorsState)} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white hover:bg-teal-800 transition-colors">Export</button>
       </Toolbar>
       <TableShell>
         <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-          <tr><th className="px-4 py-3">Donor</th><th>Email</th><th>Total Donated</th><th>Campaigns Supported</th><th>Last Donation</th><th>Actions</th></tr>
+          <tr><th className="px-5 py-4">User</th><th>Email</th><th>Total Donated</th><th>Campaigns Supported</th><th>Last Donation</th><th>Status</th><th className="min-w-[420px]">Actions</th></tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
           {donorsState.map((item) => (
-            <tr key={item.email}><td className="px-4 py-4 font-bold">{item.name}</td><td>{item.email}</td><td>{item.donated}</td><td>{item.campaigns}</td><td>{item.last}</td><td className="px-4 py-4"><div className="flex gap-2"><button onClick={() => handleViewDonorProfile(item)} className="text-xs font-bold text-teal-700 hover:text-teal-800">Profile</button><button onClick={() => notify(`Composing message to ${item.name}...`)} className="text-xs font-bold text-blue-600 hover:text-blue-700">Message</button><button onClick={() => downloadCsv(`${item.name}_report.csv`, [item])} className="text-xs font-bold text-green-600 hover:text-green-700">Report</button></div></td></tr>
+            <tr key={item.email}>
+              <td className="px-5 py-5">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">
+                    {item.name.split(" ").map((part) => part[0]).slice(0, 2).join("")}
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-900">{item.name}</p>
+                    <p className="text-xs text-slate-500">{item.status === "Active" ? "Currently active" : "Inactive user"}</p>
+                  </div>
+                </div>
+              </td>
+              <td>{item.email}</td>
+              <td>{item.donated}</td>
+              <td>{item.campaigns}</td>
+              <td>{item.last}</td>
+              <td><StatusCell status={item.status} /></td>
+              <td className="px-5 py-5">
+                <div className="table-actions flex flex-wrap gap-2">
+                  <ActionButton onClick={() => handleViewDonorProfile(item)} icon={Eye} tone="info">Profile</ActionButton>
+                  <ActionButton onClick={() => notify(`Composing message to ${item.name}...`)} icon={MessageSquare} tone="neutral">Message</ActionButton>
+                  <ActionButton onClick={() => handleDonorStatusChange(item.email)} icon={item.status === "Active" ? PauseCircle : PlayCircle} tone={item.status === "Active" ? "warning" : "success"}>
+                    {item.status === "Active" ? "Deactivate" : "Activate"}
+                  </ActionButton>
+                  <ActionButton onClick={() => downloadCsv(`${item.name}_report.csv`, [item])} icon={FileText} tone="success">Report</ActionButton>
+                </div>
+              </td>
+            </tr>
           ))}
         </tbody>
       </TableShell>
@@ -648,14 +898,29 @@ export default function AdminDashboard() {
         </div>
         <TableShell>
           <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-            <tr><th className="px-4 py-3">Campaign</th><th>Submitted By</th><th>Category</th><th>Goal</th><th>Documents</th><th>Actions</th></tr>
+            <tr><th className="px-5 py-4">Campaign</th><th>Submitted By</th><th>Category</th><th>Goal</th><th>Status</th><th>Documents</th><th className="min-w-[430px]">Actions</th></tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {approvalItems.map((item) => (
-              <tr key={item.campaign}><td className="px-4 py-4 font-bold">{item.campaign}</td><td>{item.by}</td><td>{item.category}</td><td>{item.goal}</td><td><span className="inline-block rounded-full bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700">{item.docs} files</span></td><td className="px-4 py-4"><div className="flex flex-wrap gap-2"><button onClick={() => notify(`Viewing documents for ${item.campaign}`)} className="rounded bg-blue-50 px-3 py-1 text-xs font-bold text-blue-600 hover:bg-blue-100">Docs</button><button onClick={() => notify(`Requesting additional info from ${item.by}`)} className="rounded bg-amber-50 px-3 py-1 text-xs font-bold text-amber-600 hover:bg-amber-100">Request Info</button><button onClick={() => handleApproval(item.campaign, "approve")} className="rounded bg-teal-700 px-3 py-1 text-xs font-bold text-white hover:bg-teal-800">✓ Approve</button><button onClick={() => handleApproval(item.campaign, "reject")} className="rounded bg-red-50 px-3 py-1 text-xs font-bold text-red-600 hover:bg-red-100">✕ Reject</button></div></td></tr>
+              <tr key={item.campaign}>
+                <td className="px-5 py-5 font-bold">{item.campaign}</td>
+                <td>{item.by}</td>
+                <td>{item.category}</td>
+                <td>{item.goal}</td>
+                <td><StatusCell status="Pending Review" /></td>
+                <td><span className="inline-block rounded-full bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700 ring-1 ring-blue-100">{item.docs} files</span></td>
+                <td className="px-5 py-5">
+                  <div className="table-actions flex flex-wrap gap-2">
+                    <ActionButton onClick={() => notify(`Viewing documents for ${item.campaign}`)} icon={FileText} tone="info">Docs</ActionButton>
+                    <ActionButton onClick={() => notify(`Requesting additional info from ${item.by}`)} tone="warning">Request Info</ActionButton>
+                    <ActionButton onClick={() => handleApproval(item.campaign, "approve")} icon={CheckCircle} tone="primary">Approve</ActionButton>
+                    <ActionButton onClick={() => handleApproval(item.campaign, "reject")} tone="danger">Reject</ActionButton>
+                  </div>
+                </td>
+              </tr>
             ))}
             {approvalItems.length === 0 && (
-              <tr><td className="px-4 py-6 text-center text-slate-500" colSpan="6">No pending approvals.</td></tr>
+              <tr><td className="px-5 py-6 text-center text-slate-500" colSpan="7">No pending approvals.</td></tr>
             )}
           </tbody>
         </TableShell>
@@ -682,10 +947,10 @@ export default function AdminDashboard() {
   const renderReports = () => (
     <>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard icon={CircleDollarSign} label="Total Raised" value="Rs 12,45,000" note="+10%" />
-        <StatCard icon={Inbox} label="Total Donations" value="820" note="+18%" />
-        <StatCard icon={Users} label="New Donors" value="124" note="+18%" />
-        <StatCard icon={BarChart3} label="Success Rate" value="64%" note="-2%" danger />
+        <StatCard icon={CircleDollarSign} label="Total Raised" value="Rs 12,45,000" note="+10%" tone="teal" />
+        <StatCard icon={Inbox} label="Total Donations" value="820" note="+18%" tone="blue" />
+        <StatCard icon={Users} label="New Donors" value="124" note="+18%" tone="violet" />
+        <StatCard icon={BarChart3} label="Success Rate" value="64%" note="-2%" danger tone="amber" />
       </div>
       <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -944,10 +1209,52 @@ export default function AdminDashboard() {
   return (
     <main className="min-h-screen bg-slate-50 admin-page">
       <style>{`
+        .admin-page {
+          width: 100%;
+          overflow-x: hidden;
+        }
+        .admin-page * {
+          box-sizing: border-box;
+        }
+        .admin-page section,
+        .admin-page .dashboard-card,
+        .admin-page .admin-table,
+        .admin-page .kpi-card {
+          border-radius: 18px;
+        }
+        .admin-page section,
+        .admin-page .dashboard-card {
+          border-color: #dbe3ee;
+          box-shadow: 0 8px 24px rgba(15,23,42,0.05);
+          transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+        }
+        .admin-page section:hover,
+        .admin-page .dashboard-card:hover {
+          border-color: #bdd7d2;
+          box-shadow: 0 18px 38px rgba(15,23,42,0.09);
+        }
         .admin-page input, .admin-page select, .admin-page textarea, .admin-page .toolbar-input {
           box-shadow: 0 8px 20px rgba(2,6,23,0.08);
           transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease, background-color .18s ease;
-          border-radius: .5rem;
+          border-radius: .9rem;
+          min-height: 44px;
+        }
+        .admin-page select {
+          appearance: none;
+          min-width: 150px;
+          padding-right: 2.5rem;
+          background-color: #fff;
+          background-image: url("data:image/svg+xml,%3Csvg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%230f172a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+          background-repeat: no-repeat;
+          background-position: right .8rem center;
+          background-size: 18px;
+        }
+        .admin-page .admin-toolbar-actions {
+          align-items: center;
+        }
+        .admin-page .admin-toolbar-actions > select,
+        .admin-page .admin-toolbar-actions > button {
+          min-height: 44px;
         }
         .admin-page input:hover, .admin-page select:hover, .admin-page textarea:hover {
           border-color: #0f766e;
@@ -980,12 +1287,54 @@ export default function AdminDashboard() {
           box-shadow: 0 10px 22px rgba(2,6,23,0.12);
           transform: translateY(-1px);
         }
+        .admin-page .kpi-card {
+          cursor: pointer;
+          min-height: 158px;
+          transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease, background-color .18s ease;
+        }
+        .admin-page .kpi-card:hover {
+          border-color: #99f6e4;
+          box-shadow: 0 18px 36px rgba(15,23,42,0.12);
+          transform: translateY(-4px);
+          background: linear-gradient(180deg, #ffffff 0%, #f8fffd 100%);
+        }
         .admin-page tbody tr {
           transition: background-color .18s ease, box-shadow .18s ease, transform .18s ease;
         }
         .admin-page tbody tr:hover {
           background: #f8fafc;
           box-shadow: inset 3px 0 0 #0f766e;
+        }
+        .admin-page .admin-table thead th {
+          white-space: nowrap;
+          letter-spacing: .02em;
+          color: #64748b;
+          font-weight: 800;
+        }
+        .admin-page .admin-table tbody td {
+          vertical-align: middle;
+          white-space: nowrap;
+        }
+        .admin-page .admin-table tbody td:first-child,
+        .admin-page .admin-table tbody td:nth-child(2) {
+          white-space: normal;
+        }
+        .admin-page .table-actions {
+          align-items: center;
+          min-width: max-content;
+        }
+        .admin-page .status-cell {
+          width: clamp(130px, 10vw, 190px);
+        }
+        .admin-page .floating-donor,
+        .admin-page .admin-table tbody tr,
+        .admin-page .rounded-xl.bg-slate-50 {
+          transition: background-color .18s ease, box-shadow .18s ease, transform .18s ease;
+        }
+        .admin-page .floating-donor:hover,
+        .admin-page .rounded-xl.bg-slate-50:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 14px 28px rgba(15,23,42,0.1);
         }
         .floating-donor { animation: floatY 6s ease-in-out infinite; }
         @keyframes floatY { 0%{transform:translateY(0)} 50%{transform:translateY(-8px)} 100%{transform:translateY(0)} }
@@ -1038,7 +1387,7 @@ export default function AdminDashboard() {
             </div>
           </header>
 
-          <div className="p-6">
+          <div className="w-full max-w-[1920px] px-6 py-6 2xl:px-8">
             <div className="mb-6">
               <h1 className="text-2xl font-bold text-slate-950">{title}</h1>
               <p className="mt-1 text-sm text-slate-500">Manage fundraiser operations from one clean workspace.</p>

@@ -6,6 +6,7 @@ const Navbar = () => {
   const [showContact, setShowContact] = useState(false);
 
   const token = localStorage.getItem("token");
+  const role = localStorage.getItem("role");
 
   const handleLogout = () => {
     localStorage.clear();
@@ -55,8 +56,13 @@ const Navbar = () => {
           </Link>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <Link to="/dashboard" className="hover:text-gray-300" style={{ textDecoration: 'none', color: 'white' }}>User Dashboard</Link>
-            <Link to="/admin" className="hover:text-gray-300 ml-2" style={{ textDecoration: 'none', color: 'white' }}>Admin Dashboard</Link>
+            <Link to="/campaigns" className="hover:text-gray-300" style={{ textDecoration: 'none', color: 'white' }}>Explore Campaigns</Link>
+            {role === "USER" && (
+              <Link to="/dashboard" className="hover:text-gray-300" style={{ textDecoration: 'none', color: 'white' }}>User Dashboard</Link>
+            )}
+            {role === "ADMIN" && (
+              <Link to="/admin" className="hover:text-gray-300 ml-2" style={{ textDecoration: 'none', color: 'white' }}>Admin Dashboard</Link>
+            )}
 
             <button 
               onClick={handleLogout} 

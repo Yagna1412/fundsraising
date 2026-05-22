@@ -4,6 +4,20 @@ import { useNavigate } from "react-router-dom";
 
 const API_URL = "http://localhost:8081/user";
 const ICON_SIZE = "20";
+const DEMO_CREDENTIALS = {
+  USER: {
+    label: "User",
+    email: "user@myfundraiser.com",
+    password: "user123",
+    redirect: "/dashboard",
+  },
+  ADMIN: {
+    label: "Admin",
+    email: "admin@myfundraiser.com",
+    password: "admin123",
+    redirect: "/admin",
+  },
+};
 
 const MailIcon = (
   <svg xmlns="http://www.w3.org/2000/svg" width={ICON_SIZE} height={ICON_SIZE}
@@ -33,16 +47,16 @@ const UserIcon = (
 );
 
 const FormInput = ({ iconSvg, type, name, placeholder, value, onChange, error }) => (
-  <div className="relative mb-6">
-    <div className="absolute left-2.5 top-1/2 transform -translate-y-1/2">{iconSvg}</div>
+  <div className="relative mb-5">
+    <div className="absolute left-4 top-[22px] -translate-y-1/2">{iconSvg}</div>
     <input
       type={type}
       name={name}
       value={value}
       onChange={onChange}
       placeholder={placeholder}
-      className={`w-full py-3 px-3 pl-10 rounded-lg placeholder-gray-400 border 
-        ${error ? "border-red-500" : "border-gray-300"} `}
+      className={`w-full rounded-2xl border bg-white px-4 py-3.5 pl-12 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-teal-500 hover:shadow-lg focus:border-teal-700 focus:ring-4 focus:ring-teal-100
+        ${error ? "border-red-500 bg-red-50" : "border-slate-200"} `}
     />
     {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
   </div>
@@ -54,6 +68,7 @@ const Loginsignup = () => {
   const [isLoginOpen, setLoginOpen] = useState(true);
   const [isRegisterOpen, setRegisterOpen] = useState(false);
   const [feedback, setFeedback] = useState(null);
+  const [selectedRole, setSelectedRole] = useState("USER");
 
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [registerForm, setRegisterForm] = useState({ name: "", email: "", password: "" });
@@ -85,11 +100,22 @@ const Loginsignup = () => {
     return newErrors;
   };
 
-  const saveUserSession = (email) => {
-    localStorage.setItem("token", "user_token_" + Date.now());
+  const saveUserSession = (email, role = "USER", name = email.split("@")[0]) => {
+    localStorage.setItem("token", `${role.toLowerCase()}_token_` + Date.now());
     localStorage.setItem("email", email);
-    localStorage.setItem("username", email);
-    localStorage.setItem("role", "USER");
+    localStorage.setItem("username", name);
+    localStorage.setItem("role", role);
+    localStorage.setItem("user", JSON.stringify({ name, email, role }));
+  };
+
+  const fillCredentials = (role) => {
+    setSelectedRole(role);
+    setLoginForm({
+      email: DEMO_CREDENTIALS[role].email,
+      password: DEMO_CREDENTIALS[role].password,
+    });
+    setErrors({});
+    setFeedback(null);
   };
 
   const handleLoginSubmit = async (e) => {
@@ -102,16 +128,30 @@ const Loginsignup = () => {
       return;
     }
 
+    const demoAccount = DEMO_CREDENTIALS[selectedRole];
+    const isDemoLogin =
+      loginForm.email.trim().toLowerCase() === demoAccount.email &&
+      loginForm.password === demoAccount.password;
+
+    if (isDemoLogin) {
+      saveUserSession(loginForm.email, selectedRole, selectedRole === "ADMIN" ? "Admin" : "Demo User");
+      setFeedback({ text: `${demoAccount.label} login successful. Redirecting...`, type: "success" });
+      setTimeout(() => {
+        navigate(demoAccount.redirect);
+      }, 700);
+      return;
+    }
+
     try {
       await axios.post(`${API_URL}/login`, { email: loginForm.email, password: loginForm.password });
       
-      saveUserSession(loginForm.email);
+      saveUserSession(loginForm.email, selectedRole);
 
-      setFeedback({ text: `Login Successful! Welcome`, type: "success" });
+      setFeedback({ text: `${DEMO_CREDENTIALS[selectedRole].label} login successful. Redirecting...`, type: "success" });
 
       setTimeout(() => {
-        navigate("/campaigns"); 
-      }, 1500);
+        navigate(DEMO_CREDENTIALS[selectedRole].redirect); 
+      }, 700);
 
     } catch (error) {
       const msg = error.response?.data || "Invalid credentials";
@@ -153,7 +193,7 @@ const Loginsignup = () => {
         password: registerForm.password 
       });
 
-      saveUserSession(registerForm.email);
+      saveUserSession(registerForm.email, "USER", registerForm.name);
 
       setFeedback({
         text: "Registration Successful! Welcome.",
@@ -161,8 +201,8 @@ const Loginsignup = () => {
       });
 
       setTimeout(() => {
-        navigate("/campaigns");
-      }, 1500);
+        navigate("/dashboard");
+      }, 700);
 
     } catch (error) {
       const errorMsg = error.response?.data;
@@ -181,52 +221,145 @@ const Loginsignup = () => {
   }, [feedback]);
 
   return (
-    <div className="min-h-[70vh] flex items-center justify-center bg-gray-100 p-4">
-      {isLoginOpen && (
-        <form onSubmit={handleLoginSubmit} className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-sm">
-          <h2 className="text-center mb-6 text-2xl font-bold text-[#007A8E]">Sign In</h2>
+    <div className="min-h-[calc(100vh-140px)] bg-slate-50 px-5 py-10">
+      <div className="mx-auto grid min-h-[680px] w-full max-w-7xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl lg:grid-cols-[1.05fr_0.95fr]">
+        <section className="relative hidden bg-teal-900 p-12 text-white lg:flex lg:flex-col lg:justify-between">
+          <img
+            src="https://images.unsplash.com/photo-1593113598332-cd288d649433?auto=format&fit=crop&w=1400&q=85"
+            alt="Volunteers preparing donation boxes for people in need"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-teal-950/95 via-teal-900/78 to-slate-950/88" />
+          <div className="relative">
+            <p className="mb-4 inline-flex rounded-full bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-wide text-teal-100 ring-1 ring-white/15">
+              MyFundraiser secure access
+            </p>
+            <h1 className="max-w-lg text-5xl font-black leading-tight">
+              Manage campaigns, donations, and impact from one place.
+            </h1>
+            <p className="mt-5 max-w-xl text-base font-medium leading-7 text-teal-50">
+              Choose the correct role before signing in. Admin accounts open the operations dashboard, while user accounts open the personal fundraising dashboard.
+            </p>
+          </div>
 
-          <FormInput iconSvg={MailIcon} type="email" name="email" placeholder="Email"
-            value={loginForm.email} onChange={(e) => handleChange(e, "login")} error={errors.email} />
+          <div className="relative grid grid-cols-3 gap-4">
+            {[
+              ["38", "Active campaigns"],
+              ["1.2K", "Donors"],
+              ["24.8L", "Raised"],
+            ].map(([value, label]) => (
+              <div key={label} className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/15 backdrop-blur">
+                <p className="text-2xl font-black">{value}</p>
+                <p className="mt-1 text-xs font-semibold text-teal-100">{label}</p>
+              </div>
+            ))}
+          </div>
+        </section>
 
-          <FormInput iconSvg={LockIcon} type="password" name="password" placeholder="Password"
-            value={loginForm.password} onChange={(e) => handleChange(e, "login")} error={errors.password} />
+        <section className="flex items-center justify-center bg-slate-50 px-5 py-10 sm:px-10">
+          <div className="w-full max-w-md">
+            <div className="mb-6 text-center lg:text-left">
+              <p className="text-sm font-bold uppercase tracking-wide text-teal-700">
+                {isLoginOpen ? "Welcome back" : "Create your account"}
+              </p>
+              <h2 className="mt-2 text-3xl font-black text-slate-950">
+                {isLoginOpen ? "Sign in to continue" : "Register as a fundraiser"}
+              </h2>
+              <p className="mt-2 text-sm font-medium text-slate-500">
+                {isLoginOpen ? "Select your role and use the matching credentials." : "New registrations are created as user accounts."}
+              </p>
+            </div>
 
-          <button className="w-full py-3 bg-[#007A8E] text-white rounded-lg hover:bg-[#005F6B] transition">Login</button>
+            <div className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-xl">
+              {isLoginOpen && (
+                <form onSubmit={handleLoginSubmit}>
+                  <div className="mb-5 grid grid-cols-2 gap-3 rounded-2xl bg-slate-100 p-1.5">
+                    {Object.entries(DEMO_CREDENTIALS).map(([role, account]) => (
+                      <button
+                        key={role}
+                        type="button"
+                        onClick={() => setSelectedRole(role)}
+                        className={`rounded-xl px-4 py-3 text-sm font-black transition ${
+                          selectedRole === role
+                            ? "bg-white text-teal-800 shadow-sm"
+                            : "text-slate-500 hover:text-slate-900"
+                        }`}
+                      >
+                        {account.label}
+                      </button>
+                    ))}
+                  </div>
 
-          <p className="text-center mt-6 text-gray-600">
-            Don’t have an account?
-            <button type="button" className="text-[#007A8E] ml-1 underline"
-              onClick={() => { setLoginOpen(false); setRegisterOpen(true); setErrors({}); }}>
-              Register
-            </button>
-          </p>
-        </form>
-      )}
-      {isRegisterOpen && (
-        <form onSubmit={handleRegisterSubmit} className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-sm">
-          <h2 className="text-center mb-6 text-2xl font-bold text-[#007A8E]">Create Account</h2>
+                  <div className="mb-5 grid gap-3">
+                    {Object.entries(DEMO_CREDENTIALS).map(([role, account]) => (
+                      <button
+                        key={role}
+                        type="button"
+                        onClick={() => fillCredentials(role)}
+                        className={`rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-lg ${
+                          selectedRole === role ? "border-teal-200 bg-teal-50" : "border-slate-200 bg-white"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-sm font-black text-slate-900">{account.label} credentials</p>
+                          <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-teal-700 ring-1 ring-teal-100">
+                            Use
+                          </span>
+                        </div>
+                        <p className="mt-2 text-xs font-semibold text-slate-500">Email: {account.email}</p>
+                        <p className="text-xs font-semibold text-slate-500">Password: {account.password}</p>
+                      </button>
+                    ))}
+                  </div>
 
-          <FormInput iconSvg={UserIcon} type="text" name="name" placeholder="Full Name"
-            value={registerForm.name} onChange={(e) => handleChange(e, "register")} error={errors.name} />
+                  <FormInput iconSvg={MailIcon} type="email" name="email" placeholder="Email"
+                    value={loginForm.email} onChange={(e) => handleChange(e, "login")} error={errors.email} />
 
-          <FormInput iconSvg={MailIcon} type="email" name="email" placeholder="Email"
-            value={registerForm.email} onChange={(e) => handleChange(e, "register")} error={errors.email} />
+                  <FormInput iconSvg={LockIcon} type="password" name="password" placeholder="Password"
+                    value={loginForm.password} onChange={(e) => handleChange(e, "login")} error={errors.password} />
 
-          <FormInput iconSvg={LockIcon} type="password" name="password" placeholder="Password"
-            value={registerForm.password} onChange={(e) => handleChange(e, "register")} error={errors.password} />
+                  <button className="w-full rounded-2xl bg-teal-700 py-3.5 text-sm font-black text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-teal-800 hover:shadow-xl">
+                    Login as {DEMO_CREDENTIALS[selectedRole].label}
+                  </button>
 
-          <button className="w-full py-3 bg-[#007A8E] text-white rounded-lg hover:bg-[#005F6B] transition">Register</button>
+                  <p className="text-center mt-6 text-sm font-medium text-slate-600">
+                    Don’t have an account?
+                    <button type="button" className="text-[#007A8E] ml-1 font-black hover:underline"
+                      onClick={() => { setLoginOpen(false); setRegisterOpen(true); setErrors({}); setFeedback(null); }}>
+                      Register
+                    </button>
+                  </p>
+                </form>
+              )}
 
-          <p className="text-center mt-6 text-gray-600">
-            Already have an account?
-            <button type="button" className="text-[#007A8E] ml-1 underline"
-              onClick={() => { setRegisterOpen(false); setLoginOpen(true); setErrors({}); }}>
-              Login
-            </button>
-          </p>
-        </form>
-      )}
+              {isRegisterOpen && (
+                <form onSubmit={handleRegisterSubmit}>
+                  <FormInput iconSvg={UserIcon} type="text" name="name" placeholder="Full Name"
+                    value={registerForm.name} onChange={(e) => handleChange(e, "register")} error={errors.name} />
+
+                  <FormInput iconSvg={MailIcon} type="email" name="email" placeholder="Email"
+                    value={registerForm.email} onChange={(e) => handleChange(e, "register")} error={errors.email} />
+
+                  <FormInput iconSvg={LockIcon} type="password" name="password" placeholder="Password"
+                    value={registerForm.password} onChange={(e) => handleChange(e, "register")} error={errors.password} />
+
+                  <button className="w-full rounded-2xl bg-teal-700 py-3.5 text-sm font-black text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-teal-800 hover:shadow-xl">
+                    Create User Account
+                  </button>
+
+                  <p className="text-center mt-6 text-sm font-medium text-slate-600">
+                    Already have an account?
+                    <button type="button" className="text-[#007A8E] ml-1 font-black hover:underline"
+                      onClick={() => { setRegisterOpen(false); setLoginOpen(true); setErrors({}); setFeedback(null); }}>
+                      Login
+                    </button>
+                  </p>
+                </form>
+              )}
+            </div>
+          </div>
+        </section>
+      </div>
 
       <FeedbackMessage text={feedback?.text} type={feedback?.type} />
     </div>

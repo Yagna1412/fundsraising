@@ -117,7 +117,6 @@ export default function UserDashboard() {
 
   const quickActions = [
     { title: "Explore Campaigns", text: "Find and support new causes", icon: <Star size={16} />, action: () => navigate("/campaigns") },
-    { title: "Create a Fundraiser", text: "Start your own campaign", icon: <Landmark size={16} />, action: () => navigate("/create-fundraiser") },
     { title: "Donation History", text: "View all your contributions", icon: <ClipboardList size={16} />, action: () => { setShowAllDonations(true); window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }); } },
     { title: "Account Settings", text: "Manage your profile and security", icon: <Settings size={16} />, action: () => setIsEditing(true) },
     { title: "Logout", text: "Sign out of your account", icon: <LogOut size={16} />, action: () => { localStorage.clear(); navigate("/loginSignup"); } },
