@@ -1,80 +1,114 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BarChart3,
   Bell,
   CheckCircle,
   CircleDollarSign,
+  CreditCard,
   Edit3,
   Eye,
   FileText,
   Home,
-  Inbox,
   LayoutDashboard,
   MessageSquare,
   PauseCircle,
   PlayCircle,
   RotateCcw,
   Search,
+  LogOut,
   Settings,
   ShieldCheck,
   TrendingUp,
+  UserCircle,
   Users,
 } from "lucide-react";
+import { useAdminRealtime } from "../hooks/useAdminRealtime";
+import platformApi from "../services/platformApi";
+import AdminReportsPanel from "./admin/AdminReportsPanel";
+import AdminPaymentsPanel from "./admin/AdminPaymentsPanel";
+import AdminUserProfilesPanel from "./admin/AdminUserProfilesPanel";
+import AdminSecurityPanel from "./admin/AdminSecurityPanel";
+import LiveSyncBadge from "./admin/LiveSyncBadge";
+import AdminSidebar from "./admin/components/AdminSidebar";
+import AdminSettingsPanel from "./admin/components/AdminSettingsPanel";
+import AdminHomeView from "./admin/views/AdminHomeView";
+import adminPageStyles from "./admin/styles/adminPageStyles";
+import { StatCard } from "./admin/components/ui/AdminUi";
+import PaymentMethodBadge from "./admin/components/PaymentMethodBadge";
+import Pagination from "./admin/components/Pagination";
+import AdminPendingApprovalsPanel, { PendingApprovalsFull } from "./admin/components/AdminPendingApprovalsPanel";
+import { normalizePaymentMethod } from "../constants/paymentMethods";
+
+const DONOR_PAGE_SIZE = 5;
+const DONATION_PAGE_SIZE = 5;
 
 const campaigns = [
-  { name: "Heart Surgery for Arjun", organiser: "Meena R.", category: "Medical", raised: "Rs 4,10,000", goal: "Rs 5,00,000", progress: 82, status: "Active", deadline: "Jun 15" },
-  { name: "School Supplies - Nalgonda", organiser: "Suresh K.", category: "Education", raised: "Rs 51,600", goal: "Rs 1,20,000", progress: 43, status: "Active", deadline: "May 30" },
-  { name: "Flood Relief - Warangal", organiser: "NGO Sahay", category: "Community", raised: "Rs 9,70,000", goal: "Rs 10,00,000", progress: 97, status: "Urgent", deadline: "May 22" },
-  { name: "Community Well Project", organiser: "Priso M.", category: "Community", raised: "Rs 65,200", goal: "Rs 2,50,000", progress: 26, status: "Paused", deadline: "Jul 1" },
-  { name: "Cancer Treatment Fund", organiser: "Ramesh P.", category: "Medical", raised: "Rs 82,000", goal: "Rs 4,00,000", progress: 61, status: "Active", deadline: "Jun 30" },
+  { id: "CMP-1001", name: "Heart Surgery for Arjun", organiser: "Meena R.", category: "Medical", beneficiary: "Arjun Kumar", raised: "Rs 4,10,000", goal: "Rs 5,00,000", progress: 82, status: "Active", deadline: "Jun 15, 2026", createdAt: "Apr 2, 2026", donorCount: 142, verified: true },
+  { id: "CMP-1002", name: "School Supplies - Nalgonda", organiser: "Suresh K.", category: "Education", beneficiary: "ZPHS Nalgonda", raised: "Rs 51,600", goal: "Rs 1,20,000", progress: 43, status: "Active", deadline: "May 30, 2026", createdAt: "Mar 18, 2026", donorCount: 38, verified: true },
+  { id: "CMP-1003", name: "Flood Relief - Warangal", organiser: "NGO Sahay", category: "Community", beneficiary: "Warangal District", raised: "Rs 9,70,000", goal: "Rs 10,00,000", progress: 97, status: "Urgent", deadline: "May 22, 2026", createdAt: "May 1, 2026", donorCount: 310, verified: true },
+  { id: "CMP-1004", name: "Community Well Project", organiser: "Priso M.", category: "Community", beneficiary: "Village Panchayat", raised: "Rs 65,200", goal: "Rs 2,50,000", progress: 26, status: "Paused", deadline: "Jul 1, 2026", createdAt: "Feb 10, 2026", donorCount: 21, verified: false },
+  { id: "CMP-1005", name: "Cancer Treatment Fund", organiser: "Ramesh P.", category: "Medical", beneficiary: "Lakshmi Devi", raised: "Rs 82,000", goal: "Rs 4,00,000", progress: 61, status: "Active", deadline: "Jun 30, 2026", createdAt: "Apr 28, 2026", donorCount: 56, verified: true },
 ];
 
 const getSubmittedFundraisers = () => {
   try {
     const stored = JSON.parse(localStorage.getItem("userFunds")) || [];
-    return stored.map((fundraiser) => ({
-      name: fundraiser.title || "Untitled Fundraiser",
-      organiser: fundraiser.creator || "Submitted User",
-      category: fundraiser.category || "General",
-      raised: `Rs ${Number(fundraiser.raised || 0).toLocaleString("en-IN")}`,
-      goal: `Rs ${Number(fundraiser.goalAmount || 0).toLocaleString("en-IN")}`,
-      progress: 0,
-      status: fundraiser.status || "Pending Review",
-      deadline: fundraiser.endDate || "Not set",
-      description: fundraiser.description || "No description provided.",
-      beneficiary: fundraiser.beneficiary || "Not specified",
-      image: fundraiser.image,
-      submittedAt: fundraiser.createdAt || "Recently",
-      source: "Submitted Fundraiser",
-    }));
+    return stored.map((fundraiser, index) => {
+      const goalAmount = Number(fundraiser.goalAmount || 0);
+      const raisedAmount = Number(fundraiser.raised || 0);
+      const progress = goalAmount > 0 ? Math.min(100, Math.round((raisedAmount / goalAmount) * 100)) : 0;
+      return {
+        id: fundraiser.id || `SUB-${String(index + 1).padStart(4, "0")}`,
+        name: fundraiser.title || "Untitled Fundraiser",
+        organiser: fundraiser.creator || "Submitted User",
+        category: fundraiser.category || "General",
+        raised: `Rs ${raisedAmount.toLocaleString("en-IN")}`,
+        goal: `Rs ${goalAmount.toLocaleString("en-IN")}`,
+        progress,
+        status: fundraiser.status || "Pending Review",
+        deadline: fundraiser.endDate || "Not set",
+        createdAt: fundraiser.createdAt || "Recently",
+        donorCount: Number(fundraiser.donorCount || 0),
+        verified: false,
+        description: fundraiser.description || "No description provided.",
+        beneficiary: fundraiser.beneficiary || "Not specified",
+        image: fundraiser.image,
+        submittedAt: fundraiser.createdAt || "Recently",
+        source: "Submitted Fundraiser",
+      };
+    });
   } catch {
     return [];
   }
 };
 
 const donations = [
-  { donor: "Ravi Kumar", campaign: "Heart Surgery for Arjun", amount: "Rs 5,000", method: "UPI", date: "May 21, 2026 - 10:30 AM", status: "Success" },
-  { donor: "Ananya Patel", campaign: "Flood Relief - Warangal", amount: "Rs 10,000", method: "Card", date: "May 21, 2026 - 10:20 AM", status: "Success" },
-  { donor: "Sanjay Singh", campaign: "School Supplies - Nalgonda", amount: "Rs 2,500", method: "UPI", date: "May 21, 2026 - 10:10 AM", status: "Success" },
-  { donor: "Lakshmi M.", campaign: "Heart Surgery for Arjun", amount: "Rs 15,000", method: "Net Banking", date: "May 21, 2026 - 10:05 AM", status: "Success" },
-  { donor: "Deepa Sharma", campaign: "Cancer Treatment Fund", amount: "Rs 1,000", method: "Card", date: "May 21, 2026 - 09:48 AM", status: "Pending" },
+  { id: "TXN-90021", donor: "Ravi Kumar", email: "ravi.kumar@email.com", campaign: "Heart Surgery for Arjun", campaignId: "CMP-1001", amount: "Rs 5,000", method: "UPI", date: "May 21, 2026", time: "10:30 AM", status: "Success", reference: "UPI/REF/8821" },
+  { id: "TXN-90020", donor: "Ananya Patel", email: "ananya.patel@email.com", campaign: "Flood Relief - Warangal", campaignId: "CMP-1003", amount: "Rs 10,000", method: "Card", date: "May 21, 2026", time: "10:20 AM", status: "Success", reference: "CARD/REF/4410" },
+  { id: "TXN-90019", donor: "Sanjay Singh", email: "sanjay.singh@email.com", campaign: "School Supplies - Nalgonda", campaignId: "CMP-1002", amount: "Rs 2,500", method: "UPI", date: "May 21, 2026", time: "10:10 AM", status: "Success", reference: "UPI/REF/7712" },
+  { id: "TXN-90018", donor: "Lakshmi M.", email: "lakshmi@email.com", campaign: "Heart Surgery for Arjun", campaignId: "CMP-1001", amount: "Rs 15,000", method: "Net Banking", date: "May 21, 2026", time: "10:05 AM", status: "Success", reference: "NEFT/REF/3309" },
+  { id: "TXN-90017", donor: "Deepa Sharma", email: "deepa.sharma@email.com", campaign: "Cancer Treatment Fund", campaignId: "CMP-1005", amount: "Rs 1,000", method: "Card", date: "May 21, 2026", time: "09:48 AM", status: "Pending", reference: "CARD/REF/PENDING" },
 ];
 
 const donors = [
-  { name: "Ravi Kumar", email: "ravi.kumar@email.com", donated: "Rs 50,000", campaigns: 5, last: "May 21, 2026", status: "Active" },
-  { name: "Ananya Patel", email: "ananya.patel@email.com", donated: "Rs 35,000", campaigns: 3, last: "May 21, 2026", status: "Active" },
-  { name: "Venkat Naidu", email: "venkat.naidu@email.com", donated: "Rs 40,000", campaigns: 4, last: "May 21, 2026", status: "Inactive" },
-  { name: "Sanjay Singh", email: "sanjay.singh@email.com", donated: "Rs 22,500", campaigns: 2, last: "May 21, 2026", status: "Active" },
-  { name: "Lakshmi M.", email: "lakshmi@email.com", donated: "Rs 15,000", campaigns: 2, last: "May 21, 2026", status: "Inactive" },
+  { name: "Ravi Kumar", email: "ravi.kumar@email.com", phone: "+91 98765 43210", donated: "Rs 50,000", campaigns: 5, last: "May 21, 2026", memberSince: "Jan 2025", donorType: "Recurring", status: "Active", kyc: "Verified" },
+  { name: "Ananya Patel", email: "ananya.patel@email.com", phone: "+91 91234 56780", donated: "Rs 35,000", campaigns: 3, last: "May 21, 2026", memberSince: "Mar 2025", donorType: "One-time", status: "Active", kyc: "Verified" },
+  { name: "Venkat Naidu", email: "venkat.naidu@email.com", phone: "+91 99887 76655", donated: "Rs 40,000", campaigns: 4, last: "May 20, 2026", memberSince: "Dec 2024", donorType: "Corporate", status: "Inactive", kyc: "Verified" },
+  { name: "Sanjay Singh", email: "sanjay.singh@email.com", phone: "+91 90123 45678", donated: "Rs 22,500", campaigns: 2, last: "May 21, 2026", memberSince: "Feb 2026", donorType: "One-time", status: "Active", kyc: "Pending" },
+  { name: "Lakshmi M.", email: "lakshmi@email.com", phone: "+91 93456 78901", donated: "Rs 15,000", campaigns: 2, last: "May 18, 2026", memberSince: "Apr 2025", donorType: "Recurring", status: "Inactive", kyc: "Verified" },
 ];
 
 const LIFE_SAVING_IMAGE = "https://images.unsplash.com/photo-1531746790731-6c087fecd65a?auto=format&fit=crop&w=1600&q=80";
 
 const approvals = [
-  { campaign: "Dialysis Fund for Deepa", by: "Deepa V.", category: "Medical", goal: "Rs 3,00,000", date: "May 21, 2026", docs: 3 },
-  { campaign: "Free Tuition Centre", by: "Teja R.", category: "Education", goal: "Rs 60,000", date: "May 21, 2026", docs: 2 },
-  { campaign: "Village Road Repair", by: "Bhanu N.", category: "Community", goal: "Rs 1,50,000", date: "May 21, 2026", docs: 4 },
+  { id: "APR-301", campaign: "Dialysis Fund for Deepa", by: "Deepa V.", phone: "+91 98760 11223", category: "Medical", goal: "Rs 3,00,000", location: "Hyderabad", submittedDate: "May 21, 2026", docs: 3, kycStatus: "Verified" },
+  { id: "APR-302", campaign: "Free Tuition Centre", by: "Teja R.", phone: "+91 90111 22334", category: "Education", goal: "Rs 60,000", location: "Warangal", submittedDate: "May 20, 2026", docs: 2, kycStatus: "Pending" },
+  { id: "APR-303", campaign: "Village Road Repair", by: "Bhanu N.", phone: "+91 93444 55667", category: "Community", goal: "Rs 1,50,000", location: "Nalgonda", submittedDate: "May 19, 2026", docs: 4, kycStatus: "Verified" },
+  { id: "APR-304", campaign: "Cancer Care for Lakshmi", by: "Ramesh P.", phone: "+91 98765 11122", category: "Medical", goal: "Rs 4,00,000", location: "Hyderabad", submittedDate: "May 18, 2026", docs: 3, kycStatus: "Verified" },
+  { id: "APR-305", campaign: "School Bus for ZPHS", by: "Suresh K.", phone: "+91 91234 55667", category: "Education", goal: "Rs 2,20,000", location: "Nalgonda", submittedDate: "May 17, 2026", docs: 2, kycStatus: "Pending" },
+  { id: "APR-306", campaign: "Clean Water Initiative", by: "Priya N.", phone: "+91 99880 33445", category: "Community", goal: "Rs 80,000", location: "Warangal", submittedDate: "May 16, 2026", docs: 3, kycStatus: "Verified" },
+  { id: "APR-307", campaign: "Emergency Relief Fund", by: "Karthik S.", phone: "+91 90123 77889", category: "Community", goal: "Rs 1,00,000", location: "Hyderabad", submittedDate: "May 15, 2026", docs: 4, kycStatus: "Pending" },
 ];
 
 const conversations = [
@@ -90,17 +124,13 @@ const navItems = [
   { key: "campaigns", label: "Campaigns", icon: Home },
   { key: "donors", label: "Donors", icon: Users },
   { key: "donations", label: "Donations", icon: CircleDollarSign },
-  { key: "approvals", label: "Approvals", icon: CheckCircle, badge: 3 },
+  { key: "payments", label: "Payments", icon: CreditCard },
+  { key: "userProfiles", label: "User Profiles", icon: UserCircle },
+  { key: "approvals", label: "Approvals", icon: CheckCircle },
   { key: "reports", label: "Reports", icon: FileText },
+  { key: "security", label: "Security", icon: ShieldCheck },
   { key: "messages", label: "Messages", icon: MessageSquare },
   { key: "settings", label: "Settings", icon: Settings },
-];
-
-const categoryStats = [
-  { name: "Medical", value: 40, color: "#0f766e", bg: "bg-teal-50", text: "text-teal-700" },
-  { name: "Education", value: 22, color: "#2563eb", bg: "bg-blue-50", text: "text-blue-700" },
-  { name: "Community", value: 14, color: "#7c3aed", bg: "bg-violet-50", text: "text-violet-700" },
-  { name: "Others", value: 24, color: "#ea580c", bg: "bg-orange-50", text: "text-orange-700" },
 ];
 
 const statusStyles = {
@@ -127,6 +157,22 @@ const statusMeters = {
   "Pending Review": { value: 62, color: "bg-amber-500" },
 };
 
+const parseRupeeAmount = (value) => {
+  if (typeof value === "number") return value;
+  return Number(String(value || "").replace(/[^\d]/g, "")) || 0;
+};
+
+const getCampaignProgress = (item) => {
+  const explicit = Number(item?.progress);
+  if (!Number.isNaN(explicit) && explicit >= 0 && item?.progress !== undefined && item?.progress !== "") {
+    return Math.min(100, Math.max(0, explicit));
+  }
+  const raised = parseRupeeAmount(item?.raised);
+  const goal = parseRupeeAmount(item?.goal);
+  if (goal <= 0) return 0;
+  return Math.min(100, Math.round((raised / goal) * 100));
+};
+
 const actionStyles = {
   primary: "bg-teal-700 text-white hover:bg-teal-800",
   neutral: "bg-slate-100 text-slate-700 hover:bg-slate-200",
@@ -136,38 +182,23 @@ const actionStyles = {
   success: "bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
 };
 
-const StatCard = ({ icon: Icon, label, value, note, danger, tone = "teal" }) => {
-  const tones = {
-    teal: "bg-teal-50 text-teal-700 ring-teal-100",
-    blue: "bg-blue-50 text-blue-700 ring-blue-100",
-    violet: "bg-violet-50 text-violet-700 ring-violet-100",
-    amber: "bg-amber-50 text-amber-700 ring-amber-100",
-  };
-
-  return (
-  <div className="kpi-card rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-    <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-full ring-1 ${tones[tone]}`}>
-      <Icon size={18} />
-    </div>
-    <p className="text-sm font-semibold text-slate-500">{label}</p>
-    <p className="mt-2 text-2xl font-bold text-slate-950">{value}</p>
-    {note && <p className={`mt-2 text-xs font-semibold ${danger ? "text-red-600" : "text-green-600"}`}>{note}</p>}
-  </div>
-  );
-};
-
 const StatusPill = ({ status }) => {
   const style = statusStyles[status] || "bg-slate-100 text-slate-700 ring-slate-200";
   return <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ring-1 ${style}`}>{status}</span>;
 };
 
-const StatusCell = ({ status }) => {
+const StatusCell = ({ status, meterValue }) => {
   const meter = statusMeters[status] || { value: 50, color: "bg-slate-500" };
+  const pct = Math.min(100, Math.max(0, Number(meterValue ?? meter.value) || 0));
+  const barWidth = pct > 0 ? Math.max(pct, 10) : 0;
   return (
-    <div className="status-cell min-w-[132px] max-w-[190px]">
-      <StatusPill status={status} />
-      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
-        <div className={`h-full rounded-full ${meter.color}`} style={{ width: `${meter.value}%` }} />
+    <div className="status-cell min-w-[148px]">
+      <StatusPill status={status || "Unknown"} />
+      <div className="mt-2 flex items-center gap-2">
+        <div className="h-2 min-w-[72px] flex-1 overflow-hidden rounded-full bg-slate-200">
+          <div className={`h-2 rounded-full ${meter.color}`} style={{ width: `${barWidth}%` }} />
+        </div>
+        <span className="shrink-0 text-[10px] font-bold text-slate-500">{pct}%</span>
       </div>
     </div>
   );
@@ -183,28 +214,94 @@ const ActionButton = ({ children, icon: Icon, tone = "neutral", ...props }) => (
   </button>
 );
 
-const Progress = ({ value }) => (
-  <div className="flex items-center gap-3">
-    <div className="h-2 w-28 rounded-full bg-slate-100">
-      <div className="h-2 rounded-full bg-teal-600" style={{ width: `${value}%` }} />
+const Progress = ({ value = 0 }) => {
+  const safe = Math.min(100, Math.max(0, Number(value) || 0));
+  const barWidth = safe > 0 ? Math.max(safe, 6) : 0;
+  return (
+    <div className="progress-cell flex min-w-[128px] items-center gap-2">
+      <div className="h-2.5 min-w-[88px] flex-1 overflow-hidden rounded-full bg-slate-200">
+        <div className="h-2.5 rounded-full bg-teal-600" style={{ width: `${barWidth}%` }} />
+      </div>
+      <span className="shrink-0 text-xs font-bold text-slate-600">{safe}%</span>
     </div>
-    <span className="w-9 text-xs font-bold text-slate-500">{value}%</span>
-  </div>
-);
+  );
+};
 
-const Toolbar = ({ placeholder, children }) => (
+const Toolbar = ({ placeholder, searchValue = "", onSearchChange, children }) => (
   <div className="admin-toolbar mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     <label className="relative w-full md:max-w-sm">
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-      <input className="w-full rounded-md border border-slate-200 py-2 pl-9 pr-3 text-sm outline-none focus:border-teal-600" placeholder={placeholder} />
+      <input
+        value={searchValue}
+        onChange={(e) => onSearchChange?.(e.target.value)}
+        className="w-full rounded-md border border-slate-200 py-2 pl-9 pr-3 text-sm outline-none focus:border-teal-600"
+        placeholder={placeholder}
+      />
     </label>
     <div className="admin-toolbar-actions flex flex-wrap gap-2">{children}</div>
   </div>
 );
 
-const TableShell = ({ children }) => (
+const FilterSelect = ({ value, onChange, options, label }) => (
+  <select
+    value={value}
+    onChange={(e) => onChange(e.target.value)}
+    aria-label={label}
+    className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 outline-none focus:border-teal-600"
+  >
+    {options.map((option) => (
+      <option key={option.value} value={option.value}>
+        {option.label}
+      </option>
+    ))}
+  </select>
+);
+
+const TableHead = ({ children }) => (
+  <thead className="bg-slate-50/90">
+    <tr className="border-b border-slate-200">{children}</tr>
+  </thead>
+);
+
+const Th = ({ children, className = "" }) => (
+  <th className={`whitespace-nowrap px-4 py-3.5 text-left text-[11px] font-extrabold uppercase tracking-wide text-slate-500 ${className}`}>
+    {children}
+  </th>
+);
+
+const Td = ({ children, className = "", wrap = false }) => (
+  <td className={`px-4 py-4 align-top text-left text-sm text-slate-700 ${wrap ? "whitespace-normal" : "whitespace-nowrap"} ${className}`}>
+    {children}
+  </td>
+);
+
+const TextCell = ({ primary, secondary, title }) => (
+  <div className="min-w-[160px] max-w-[260px]" title={title || primary}>
+    <p className="text-sm font-semibold leading-snug text-slate-900 line-clamp-2 break-words">{primary}</p>
+    {secondary ? <p className="mt-1 text-xs font-medium text-slate-500 line-clamp-1">{secondary}</p> : null}
+  </div>
+);
+
+const IdBadge = ({ value }) => (
+  <span className="inline-block max-w-full truncate rounded-md bg-slate-100 px-2 py-1 text-left font-mono text-[11px] font-bold text-slate-600">
+    {value}
+  </span>
+);
+
+const VerifiedBadge = ({ verified }) => (
+  <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ${verified ? "bg-emerald-50 text-emerald-700 ring-emerald-200" : "bg-amber-50 text-amber-700 ring-amber-200"}`}>
+    {verified ? "Verified" : "Review"}
+  </span>
+);
+
+const TableShell = ({ children, minWidth = 1280, fixed = false }) => (
   <div className="admin-table overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-    <table className="w-full min-w-[1120px] border-collapse text-left text-sm">{children}</table>
+    <table
+      className={`w-full border-collapse text-left text-sm ${fixed ? "table-fixed" : ""}`}
+      style={{ minWidth: fixed ? undefined : minWidth }}
+    >
+      {children}
+    </table>
   </div>
 );
 
@@ -217,7 +314,14 @@ export default function AdminDashboard() {
   const [settingsTab, setSettingsTab] = useState("Profile");
   
   // Form state for settings
-  const [profileForm, setProfileForm] = useState({ fullName: "", email: "", phone: "" });
+  const [profileForm, setProfileForm] = useState({
+    fullName: "",
+    email: "",
+    phone: "",
+    organization: "MyFundraiser",
+    jobTitle: "Platform Administrator",
+    department: "Operations",
+  });
   const [passwordForm, setPasswordForm] = useState({ current: "", new: "", confirm: "" });
   const [formErrors, setFormErrors] = useState({});
   const [touchedFields, setTouchedFields] = useState({});
@@ -243,12 +347,58 @@ export default function AdminDashboard() {
   });
 
   const [selectedItem, setSelectedItem] = useState(null);
+  const [adminSession, setAdminSession] = useState({ name: "Admin", email: "admin@myfundraiser.com", role: "ADMIN" });
   const navigate = useNavigate();
+
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("user") || "{}");
+      const email = localStorage.getItem("email") || stored.email || "admin@myfundraiser.com";
+      const name = stored.name || localStorage.getItem("username") || "Admin";
+      const role = stored.role || localStorage.getItem("role") || "ADMIN";
+      setAdminSession({ name, email, role });
+      setProfileForm((prev) => ({
+        fullName: prev.fullName || name,
+        email: prev.email || email,
+        phone: prev.phone || "",
+      }));
+    } catch {
+      /* keep defaults */
+    }
+  }, []);
 
   // Local editable state so actions reflect immediately in UI
   const [campaignsState, setCampaignsState] = useState(() => [...getSubmittedFundraisers(), ...campaigns]);
   const [donationsState, setDonationsState] = useState(donations);
   const [donorsState, setDonorsState] = useState(donors);
+
+  const [campaignSearch, setCampaignSearch] = useState("");
+  const [campaignCategoryFilter, setCampaignCategoryFilter] = useState("all");
+  const [campaignStatusFilter, setCampaignStatusFilter] = useState("all");
+  const [donationSearch, setDonationSearch] = useState("");
+  const [donationStatusFilter, setDonationStatusFilter] = useState("all");
+  const [donorSearch, setDonorSearch] = useState("");
+  const [donorStatusFilter, setDonorStatusFilter] = useState("all");
+  const [donorPage, setDonorPage] = useState(1);
+  const [donationPage, setDonationPage] = useState(1);
+  const [livePaymentFeed, setLivePaymentFeed] = useState([]);
+  const [securityLiveEvents, setSecurityLiveEvents] = useState([]);
+
+  const handleLiveDonation = useCallback((donation) => {
+    const normalized = { ...donation, method: normalizePaymentMethod(donation.method) };
+    setDonationsState((list) => [normalized, ...list].slice(0, 20));
+    setLivePaymentFeed((list) => [normalized, ...list].slice(0, 10));
+  }, []);
+
+  const handleLiveSecurity = useCallback((event) => {
+    setSecurityLiveEvents((list) => [event, ...list].slice(0, 10));
+  }, []);
+
+  const { connected, infra } = useAdminRealtime({
+    enabled: true,
+    onDonation: handleLiveDonation,
+    onSecurity: handleLiveSecurity,
+  });
 
   // Website settings for fundraiser site
   const [websiteForm, setWebsiteForm] = useState({
@@ -311,6 +461,107 @@ export default function AdminDashboard() {
   };
 
   const title = useMemo(() => navItems.find((item) => item.key === activeView)?.label || "Dashboard", [activeView]);
+
+  const navItemsWithBadges = useMemo(
+    () =>
+      navItems.map((item) =>
+        item.key === "approvals" && approvalItems.length > 0
+          ? { ...item, badge: approvalItems.length }
+          : item
+      ),
+    [approvalItems.length]
+  );
+
+  const handleLogout = () => {
+    localStorage.clear();
+    navigate("/loginSignup");
+  };
+
+  const campaignCategories = useMemo(
+    () => [...new Set(campaignsState.map((item) => item.category).filter(Boolean))].sort(),
+    [campaignsState]
+  );
+  const campaignStatuses = useMemo(
+    () => [...new Set(campaignsState.map((item) => item.status).filter(Boolean))].sort(),
+    [campaignsState]
+  );
+  const donationStatuses = useMemo(
+    () => [...new Set(donationsState.map((item) => item.status).filter(Boolean))].sort(),
+    [donationsState]
+  );
+  const donorStatuses = useMemo(
+    () => [...new Set(donorsState.map((item) => item.status).filter(Boolean))].sort(),
+    [donorsState]
+  );
+
+  const filteredCampaigns = useMemo(() => {
+    const query = campaignSearch.trim().toLowerCase();
+    return campaignsState.filter((item) => {
+      const matchesSearch =
+        !query ||
+        [item.id, item.name, item.organiser, item.category, item.beneficiary]
+          .filter(Boolean)
+          .some((field) => String(field).toLowerCase().includes(query));
+      const matchesCategory = campaignCategoryFilter === "all" || item.category === campaignCategoryFilter;
+      const matchesStatus = campaignStatusFilter === "all" || item.status === campaignStatusFilter;
+      return matchesSearch && matchesCategory && matchesStatus;
+    });
+  }, [campaignsState, campaignSearch, campaignCategoryFilter, campaignStatusFilter]);
+
+  const filteredDonations = useMemo(() => {
+    const query = donationSearch.trim().toLowerCase();
+    return donationsState.filter((item) => {
+      const matchesSearch =
+        !query ||
+        [item.id, item.donor, item.email, item.campaign, item.reference, item.method]
+          .filter(Boolean)
+          .some((field) => String(field).toLowerCase().includes(query));
+      const matchesStatus = donationStatusFilter === "all" || item.status === donationStatusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [donationsState, donationSearch, donationStatusFilter]);
+
+  useEffect(() => {
+    setDonorPage(1);
+  }, [donorSearch, donorStatusFilter]);
+
+  useEffect(() => {
+    setDonationPage(1);
+  }, [donationSearch, donationStatusFilter]);
+
+  const filteredDonors = useMemo(() => {
+    const query = donorSearch.trim().toLowerCase();
+    return donorsState.filter((item) => {
+      const matchesSearch =
+        !query ||
+        [item.name, item.email, item.phone, item.donorType, item.kyc]
+          .filter(Boolean)
+          .some((field) => String(field).toLowerCase().includes(query));
+      const matchesStatus = donorStatusFilter === "all" || item.status === donorStatusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [donorsState, donorSearch, donorStatusFilter]);
+
+  const donorTotalPages = Math.max(1, Math.ceil(filteredDonors.length / DONOR_PAGE_SIZE));
+  const paginatedDonors = useMemo(
+    () => filteredDonors.slice((donorPage - 1) * DONOR_PAGE_SIZE, donorPage * DONOR_PAGE_SIZE),
+    [filteredDonors, donorPage]
+  );
+
+  useEffect(() => {
+    if (donorPage > donorTotalPages) setDonorPage(donorTotalPages);
+  }, [donorPage, donorTotalPages]);
+
+  const donationTotalPages = Math.max(1, Math.ceil(filteredDonations.length / DONATION_PAGE_SIZE));
+  const paginatedDonations = useMemo(
+    () => filteredDonations.slice((donationPage - 1) * DONATION_PAGE_SIZE, donationPage * DONATION_PAGE_SIZE),
+    [filteredDonations, donationPage]
+  );
+
+  useEffect(() => {
+    if (donationPage > donationTotalPages) setDonationPage(donationTotalPages);
+  }, [donationPage, donationTotalPages]);
+
   const userStats = useMemo(() => {
     const active = donorsState.filter((donor) => donor.status === "Active").length;
     const inactive = donorsState.length - active;
@@ -397,7 +648,7 @@ export default function AdminDashboard() {
 
   const handleInitiateRefund = (donation) => {
     setSelectedItem(donation);
-    setRefundForm({ donationId: `${donation.donor}-${donation.date}`, reason: "", processRefund: false });
+    setRefundForm({ donationId: donation.id || `${donation.donor}-${donation.date}`, reason: "", processRefund: false });
     setShowRefundForm(true);
   };
 
@@ -405,7 +656,9 @@ export default function AdminDashboard() {
     if (validateRefundForm()) {
       const donation = selectedItem;
       // update donation state to reflect refund
-      setDonationsState((list) => list.map((d) => (d.donor === donation.donor && d.date === donation.date ? { ...d, status: "Refunded" } : d)));
+      setDonationsState((list) =>
+        list.map((d) => (d.id === donation.id || (d.donor === donation.donor && d.date === donation.date) ? { ...d, status: "Refunded" } : d))
+      );
       notify(`Refund initiated for ${donation.donor} - Amount: ${donation.amount}. Reason: ${refundForm.reason}`, "success");
       setShowRefundForm(false);
       setRefundForm({ donationId: "", reason: "", processRefund: false });
@@ -454,9 +707,11 @@ export default function AdminDashboard() {
       {selectedItem && (
         <div className="space-y-4">
           <div className="rounded-lg bg-slate-50 p-4">
+            <p className="text-sm text-slate-600">Transaction: <span className="font-mono font-bold text-slate-900">{selectedItem.id || "—"}</span></p>
             <p className="text-sm text-slate-600">Donor: <span className="font-bold text-slate-900">{selectedItem.donor}</span></p>
             <p className="text-sm text-slate-600">Amount: <span className="font-bold text-green-600">{selectedItem.amount}</span></p>
             <p className="text-sm text-slate-600">Campaign: <span className="font-bold text-slate-900">{selectedItem.campaign}</span></p>
+            <p className="text-sm text-slate-600">Reference: <span className="font-mono text-slate-800">{selectedItem.reference || "—"}</span></p>
           </div>
 
           <div>
@@ -530,16 +785,34 @@ export default function AdminDashboard() {
             </div>
             <div>
               <p className="text-xs font-bold text-slate-500">Progress</p>
-              <Progress value={selectedItem.progress} />
+              <Progress value={getCampaignProgress(selectedItem)} />
             </div>
             <div>
               <p className="text-xs font-bold text-slate-500">Deadline</p>
               <p className="text-sm font-bold text-slate-900">{selectedItem.deadline}</p>
             </div>
+            {selectedItem.id && (
+              <div>
+                <p className="text-xs font-bold text-slate-500">Campaign ID</p>
+                <p className="text-sm font-bold text-slate-900">{selectedItem.id}</p>
+              </div>
+            )}
             {selectedItem.beneficiary && (
               <div>
                 <p className="text-xs font-bold text-slate-500">Beneficiary</p>
                 <p className="text-sm font-bold text-slate-900">{selectedItem.beneficiary}</p>
+              </div>
+            )}
+            {typeof selectedItem.donorCount === "number" && (
+              <div>
+                <p className="text-xs font-bold text-slate-500">Donors</p>
+                <p className="text-sm font-bold text-slate-900">{selectedItem.donorCount}</p>
+              </div>
+            )}
+            {selectedItem.createdAt && (
+              <div>
+                <p className="text-xs font-bold text-slate-500">Created</p>
+                <p className="text-sm font-bold text-slate-900">{selectedItem.createdAt}</p>
               </div>
             )}
             {selectedItem.submittedAt && (
@@ -584,6 +857,22 @@ export default function AdminDashboard() {
               <p className="text-xs font-bold text-slate-500">Campaigns Supported</p>
               <p className="text-sm font-bold text-slate-900">{selectedItem.campaigns}</p>
             </div>
+            <div>
+              <p className="text-xs font-bold text-slate-500">Phone</p>
+              <p className="text-sm text-slate-700">{selectedItem.phone || "—"}</p>
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-500">Donor Type</p>
+              <p className="text-sm font-bold text-slate-900">{selectedItem.donorType || "—"}</p>
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-500">Member Since</p>
+              <p className="text-sm text-slate-700">{selectedItem.memberSince || "—"}</p>
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-500">KYC Status</p>
+              <VerifiedBadge verified={selectedItem.kyc === "Verified"} />
+            </div>
             <div className="col-span-2">
               <p className="text-xs font-bold text-slate-500">Last Donation</p>
               <p className="text-sm text-slate-700">{selectedItem.last}</p>
@@ -603,86 +892,19 @@ export default function AdminDashboard() {
   );
 
   const renderDashboard = () => (
-    <>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard icon={CircleDollarSign} label="Total Raised" value="Rs 24.8L" note="+12% from last month" tone="teal" />
-        <StatCard icon={Home} label="Active Campaigns" value="38" note="+5 new this week" tone="blue" />
-        <StatCard icon={Users} label="Total Users" value="1,247" note={`${userStats.active} active in this list`} tone="violet" />
-        <StatCard icon={BarChart3} label="Success Rate" value="64%" note="-2% from last month" danger tone="amber" />
-      </div>
-
-      <div className="mt-6 grid grid-cols-1 gap-6 2xl:grid-cols-[minmax(0,1.6fr)_minmax(360px,0.75fr)_minmax(320px,0.65fr)]">
-        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-5 flex items-center justify-between">
-            <h2 className="font-bold text-slate-900">Monthly Fundraising (Rs Lakhs)</h2>
-            <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>This Month</option></select>
-          </div>
-          <div className="grid h-64 grid-cols-6 items-end gap-4 rounded-lg bg-slate-50 px-6 pb-8 pt-5">
-            {[3.2, 2.9, 4.2, 3.7, 4.8, 6.0].map((amount, index) => (
-              <div key={amount} className="relative flex h-full items-end justify-center">
-                <div className={`w-full max-w-12 rounded-t-md ${index === 5 ? "bg-teal-700" : "bg-teal-300"}`} style={{ height: `${amount * 30}px` }} />
-                <span className="absolute -bottom-6 text-xs font-semibold text-slate-500">{["Dec", "Jan", "Feb", "Mar", "Apr", "May"][index]}</span>
-                <span className="absolute text-xs font-bold text-slate-500" style={{ bottom: `${amount * 30 + 8}px` }}>{amount}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-5 font-bold text-slate-900">Campaign Categories</h2>
-          <div className="flex items-center gap-5">
-            <div
-              className="relative flex h-36 w-36 shrink-0 items-center justify-center rounded-full text-center"
-              style={{
-                background:
-                  "conic-gradient(#0f766e 0 40%, #2563eb 40% 62%, #7c3aed 62% 76%, #ea580c 76% 100%)",
-              }}
-            >
-              <div className="flex h-[94px] w-[94px] items-center justify-center rounded-full bg-white text-xl font-bold text-teal-800 shadow-inner">
-                38<span className="ml-1 text-xs font-semibold text-slate-500">Total</span>
-              </div>
-            </div>
-            <div className="w-full space-y-3 text-sm">
-              {categoryStats.map((item) => (
-                <div key={item.name} className={`flex items-center justify-between rounded-md px-3 py-2 ${item.bg}`}>
-                  <span className="flex items-center gap-2 font-semibold text-slate-800">
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                    {item.name}
-                  </span>
-                  <b className={item.text}>{item.value}%</b>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-lg border border-slate-200 bg-transparent p-5 shadow-sm">
-          <h2 className="mb-4 font-bold text-slate-900">Live Donations</h2>
-          <div className="flex flex-col gap-3 max-h-96 overflow-y-auto pr-2">
-            {donationsState.slice(0, 12).map((item, idx) => (
-              <div key={`${item.donor}-${item.date}-${idx}`} className="floating-donor rounded-lg bg-white/70 backdrop-blur-sm p-3 shadow-sm border border-white/30 transition-transform hover:translate-y-0">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-400 to-teal-700 text-white font-bold">{item.donor.split(' ').map(p=>p[0]).slice(0,2).join('')}</div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-slate-900">{item.donor}</p>
-                    <p className="truncate text-xs text-slate-500">{item.campaign}</p>
-                  </div>
-                  <div className="ml-auto text-right">
-                    <p className="text-sm font-bold text-green-600">{item.amount}</p>
-                    <p className="text-xs text-slate-400">{item.date.split(' - ')[1]}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      </div>
-
-      <div className="mt-6 grid grid-cols-1 gap-6 2xl:grid-cols-[0.95fr_1.35fr]">
-        {renderRecentDonations()}
-        {renderApprovals(true)}
-      </div>
-    </>
+    <AdminHomeView
+      donationsState={donationsState}
+      userStats={userStats}
+      liveSyncActive={connected && infra.api}
+      renderPendingApprovals={() => (
+        <AdminPendingApprovalsPanel
+          items={approvalItems}
+          onViewAll={() => setActiveView("approvals")}
+          onApprove={(campaign) => handleApproval(campaign, "approve")}
+          onReject={(campaign) => handleApproval(campaign, "reject")}
+        />
+      )}
+    />
   );
 
   const renderCampaigns = () => (
@@ -693,28 +915,64 @@ export default function AdminDashboard() {
         <StatCard icon={FileText} label="Pending Review" value={campaignsState.filter((item) => item.status === "Pending Review").length} note="Submitted fundraisers" tone="amber" />
         <StatCard icon={BarChart3} label="Urgent" value={campaignsState.filter((item) => item.status === "Urgent").length} note="Needs priority attention" danger tone="amber" />
       </div>
-      <Toolbar placeholder="Search campaigns...">
-        <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>All Categories</option></select>
-        <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>All Status</option></select>
+      <Toolbar placeholder="Search campaigns..." searchValue={campaignSearch} onSearchChange={setCampaignSearch}>
+        <FilterSelect
+          label="Filter by category"
+          value={campaignCategoryFilter}
+          onChange={setCampaignCategoryFilter}
+          options={[
+            { value: "all", label: "All Categories" },
+            ...campaignCategories.map((category) => ({ value: category, label: category })),
+          ]}
+        />
+        <FilterSelect
+          label="Filter by status"
+          value={campaignStatusFilter}
+          onChange={setCampaignStatusFilter}
+          options={[
+            { value: "all", label: "All Status" },
+            ...campaignStatuses.map((status) => ({ value: status, label: status })),
+          ]}
+        />
         <button onClick={() => navigate('/create-fundraiser', { state: { image: LIFE_SAVING_IMAGE } })} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white hover:bg-teal-800 transition-colors hover:shadow-lg">+ New Campaign</button>
       </Toolbar>
-      <TableShell>
-        <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-          <tr><th className="px-5 py-4">Campaign</th><th>Organiser</th><th>Category</th><th>Raised</th><th>Goal</th><th>Progress</th><th>Status</th><th>Deadline</th><th className="min-w-[310px]">Actions</th></tr>
-        </thead>
+      <TableShell minWidth={1480}>
+        <TableHead>
+          <Th className="w-[100px]">ID</Th>
+          <Th className="min-w-[220px]">Campaign</Th>
+          <Th className="min-w-[120px]">Organiser</Th>
+          <Th>Category</Th>
+          <Th>Raised</Th>
+          <Th>Goal</Th>
+          <Th>Donors</Th>
+          <Th>Progress</Th>
+          <Th>Status</Th>
+          <Th className="min-w-[110px]">Created</Th>
+          <Th>Deadline</Th>
+          <Th>KYC</Th>
+          <Th className="min-w-[280px]">Actions</Th>
+        </TableHead>
         <tbody className="divide-y divide-slate-100">
-          {campaignsState.map((item) => (
-            <tr key={item.name} className="transition-colors hover:bg-slate-50 cursor-pointer">
-              <td className="px-5 py-5 font-bold">{item.name}</td>
-              <td>{item.organiser}</td>
-              <td>{item.category}</td>
-              <td>{item.raised}</td>
-              <td>{item.goal}</td>
-              <td><Progress value={item.progress} /></td>
-              <td><StatusCell status={item.status} /></td>
-              <td>{item.deadline}</td>
-              <td className="px-5 py-5">
-                <div className="table-actions flex flex-wrap gap-2">
+          {filteredCampaigns.map((item) => {
+            const progressVal = getCampaignProgress(item);
+            return (
+            <tr key={`${item.id || item.name}-${item.name}`} className="transition-colors hover:bg-slate-50">
+              <Td><IdBadge value={item.id || "N/A"} /></Td>
+              <Td wrap>
+                <TextCell primary={item.name} secondary={item.beneficiary ? `Beneficiary: ${item.beneficiary}` : item.source} title={item.name} />
+              </Td>
+              <Td wrap><span className="font-semibold text-slate-800">{item.organiser}</span></Td>
+              <Td><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">{item.category}</span></Td>
+              <Td><span className="font-bold text-emerald-700">{item.raised}</span></Td>
+              <Td>{item.goal}</Td>
+              <Td><span className="font-semibold text-slate-800">{item.donorCount ?? "—"}</span></Td>
+              <Td><Progress value={progressVal} /></Td>
+              <Td><StatusCell status={item.status} meterValue={progressVal} /></Td>
+              <Td wrap><span className="text-xs font-semibold text-slate-600">{item.createdAt || item.submittedAt || "—"}</span></Td>
+              <Td wrap><span className="text-xs font-semibold text-slate-600">{item.deadline}</span></Td>
+              <Td><VerifiedBadge verified={item.verified} /></Td>
+              <Td>
+                <div className="table-actions flex flex-wrap gap-1.5">
                   <ActionButton onClick={() => handleViewCampaignDetails(item)} icon={Eye} tone="info">View</ActionButton>
                   <ActionButton onClick={() => handleEditCampaign(item)} icon={Edit3} tone="neutral">Edit</ActionButton>
                   {item.status === "Pending Review" && (
@@ -729,9 +987,17 @@ export default function AdminDashboard() {
                     <ActionButton onClick={() => handleCampaignStatusChange(item.name, "Urgent")} tone="danger">Urgent</ActionButton>
                   )}
                 </div>
+              </Td>
+            </tr>
+          );
+          })}
+          {filteredCampaigns.length === 0 && (
+            <tr>
+              <td colSpan="13" className="px-5 py-10 text-center text-sm font-medium text-slate-500">
+                No campaigns match your search or filters.
               </td>
             </tr>
-          ))}
+          )}
         </tbody>
       </TableShell>
       <Modal show={showEditCampaignForm} title="Edit Campaign" onClose={() => setShowEditCampaignForm(false)}>
@@ -762,35 +1028,76 @@ export default function AdminDashboard() {
 
   const renderDonations = () => (
     <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-      <Toolbar placeholder="Search donations...">
-        <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>All Campaigns</option></select>
-        <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>All Methods</option></select>
-        <button onClick={() => downloadCsv("donations.csv", donationsState)} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white hover:bg-teal-800 transition-colors">Export</button>
+      <Toolbar placeholder="Search donations..." searchValue={donationSearch} onSearchChange={setDonationSearch}>
+        <FilterSelect
+          label="Filter by donation status"
+          value={donationStatusFilter}
+          onChange={setDonationStatusFilter}
+          options={[
+            { value: "all", label: "All Status" },
+            ...donationStatuses.map((status) => ({ value: status, label: status })),
+          ]}
+        />
+        <button onClick={() => downloadCsv("donations.csv", filteredDonations)} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white hover:bg-teal-800 transition-colors">Export</button>
       </Toolbar>
-      <TableShell>
-        <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-          <tr><th className="px-5 py-4">Donor</th><th>Campaign</th><th>Amount</th><th>Method</th><th>Date & Time</th><th>Status</th><th className="min-w-[230px]">Actions</th></tr>
-        </thead>
+      <TableShell minWidth={1380}>
+        <TableHead>
+          <Th>Txn ID</Th>
+          <Th className="min-w-[150px]">Donor</Th>
+          <Th className="min-w-[220px]">Campaign</Th>
+          <Th>Amount</Th>
+          <Th>Method</Th>
+          <Th>Reference</Th>
+          <Th>Date</Th>
+          <Th>Time</Th>
+          <Th>Status</Th>
+          <Th className="min-w-[200px]">Actions</Th>
+        </TableHead>
         <tbody className="divide-y divide-slate-100">
-          {donationsState.map((item) => (
-            <tr key={`${item.donor}-${item.date}`}>
-              <td className="px-5 py-5 font-bold">{item.donor}</td>
-              <td>{item.campaign}</td>
-              <td>{item.amount}</td>
-              <td>{item.method}</td>
-              <td>{item.date}</td>
-              <td><StatusCell status={item.status} /></td>
-              <td className="px-5 py-5">
-                <div className="table-actions flex flex-wrap gap-2">
-                  <ActionButton onClick={() => notify(`Viewing donation from ${item.donor}`)} icon={Eye} tone="info">View</ActionButton>
+          {paginatedDonations.map((item) => {
+            const statusMeter = statusMeters[item.status]?.value ?? 50;
+            return (
+            <tr key={item.id || `${item.donor}-${item.date}`}>
+              <Td><IdBadge value={item.id || "—"} /></Td>
+              <Td wrap>
+                <TextCell primary={item.donor} secondary={item.email} title={item.donor} />
+              </Td>
+              <Td wrap>
+                <TextCell primary={item.campaign} secondary={item.campaignId} title={item.campaign} />
+              </Td>
+              <Td><span className="font-bold text-emerald-700">{item.amount}</span></Td>
+              <Td><PaymentMethodBadge method={item.method} short /></Td>
+              <Td wrap><span className="font-mono text-[11px] text-slate-500">{item.reference || "—"}</span></Td>
+              <Td>{item.date}</Td>
+              <Td>{item.time || "—"}</Td>
+              <Td><StatusCell status={item.status} meterValue={statusMeter} /></Td>
+              <Td>
+                <div className="table-actions flex flex-wrap gap-1.5">
+                  <ActionButton onClick={() => notify(`Viewing donation ${item.id || ""} from ${item.donor}`)} icon={Eye} tone="info">View</ActionButton>
                   {item.status === "Success" && <ActionButton onClick={() => handleInitiateRefund(item)} icon={RotateCcw} tone="danger">Refund</ActionButton>}
                   {item.status === "Pending" && <ActionButton onClick={() => notify(`Following up on pending payment from ${item.donor}`)} tone="warning">Follow Up</ActionButton>}
                 </div>
+              </Td>
+            </tr>
+          );
+          })}
+          {filteredDonations.length === 0 && (
+            <tr>
+              <td colSpan="10" className="px-5 py-10 text-center text-sm font-medium text-slate-500">
+                No donations match your search or filters.
               </td>
             </tr>
-          ))}
+          )}
         </tbody>
       </TableShell>
+      <Pagination
+        page={donationPage}
+        totalPages={donationTotalPages}
+        totalItems={filteredDonations.length}
+        pageSize={DONATION_PAGE_SIZE}
+        onPageChange={setDonationPage}
+        label="donations"
+      />
       {renderRefundForm()}
     </section>
   );
@@ -844,35 +1151,56 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
-      <Toolbar placeholder="Search donors...">
-        <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>All Donor Types</option></select>
-        <button onClick={() => downloadCsv("donors.csv", donorsState)} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white hover:bg-teal-800 transition-colors">Export</button>
+      <Toolbar placeholder="Search donors..." searchValue={donorSearch} onSearchChange={setDonorSearch}>
+        <FilterSelect
+          label="Filter by donor status"
+          value={donorStatusFilter}
+          onChange={setDonorStatusFilter}
+          options={[
+            { value: "all", label: "All Donor Status" },
+            ...donorStatuses.map((status) => ({ value: status, label: status })),
+          ]}
+        />
+        <button onClick={() => downloadCsv("donors.csv", filteredDonors)} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white hover:bg-teal-800 transition-colors">Export</button>
       </Toolbar>
-      <TableShell>
-        <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-          <tr><th className="px-5 py-4">User</th><th>Email</th><th>Total Donated</th><th>Campaigns Supported</th><th>Last Donation</th><th>Status</th><th className="min-w-[420px]">Actions</th></tr>
-        </thead>
+      <TableShell minWidth={1520}>
+        <TableHead>
+          <Th className="min-w-[180px]">Donor</Th>
+          <Th className="min-w-[200px]">Email</Th>
+          <Th>Phone</Th>
+          <Th>Type</Th>
+          <Th>Total Donated</Th>
+          <Th>Campaigns</Th>
+          <Th>Member Since</Th>
+          <Th>Last Donation</Th>
+          <Th>KYC</Th>
+          <Th>Status</Th>
+          <Th className="min-w-[300px]">Actions</Th>
+        </TableHead>
         <tbody className="divide-y divide-slate-100">
-          {donorsState.map((item) => (
+          {paginatedDonors.map((item) => {
+            const statusMeter = statusMeters[item.status]?.value ?? 40;
+            return (
             <tr key={item.email}>
-              <td className="px-5 py-5">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">
+              <Td wrap>
+                <div className="flex min-w-[160px] items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">
                     {item.name.split(" ").map((part) => part[0]).slice(0, 2).join("")}
                   </div>
-                  <div>
-                    <p className="font-bold text-slate-900">{item.name}</p>
-                    <p className="text-xs text-slate-500">{item.status === "Active" ? "Currently active" : "Inactive user"}</p>
-                  </div>
+                  <TextCell primary={item.name} secondary={item.status === "Active" ? "Active donor" : "Inactive donor"} title={item.name} />
                 </div>
-              </td>
-              <td>{item.email}</td>
-              <td>{item.donated}</td>
-              <td>{item.campaigns}</td>
-              <td>{item.last}</td>
-              <td><StatusCell status={item.status} /></td>
-              <td className="px-5 py-5">
-                <div className="table-actions flex flex-wrap gap-2">
+              </Td>
+              <Td wrap><span className="block max-w-[220px] truncate text-xs font-medium text-slate-600" title={item.email}>{item.email}</span></Td>
+              <Td>{item.phone || "—"}</Td>
+              <Td><span className="rounded-full bg-teal-50 px-2.5 py-1 text-xs font-bold text-teal-800">{item.donorType || "—"}</span></Td>
+              <Td><span className="font-bold text-emerald-700">{item.donated}</span></Td>
+              <Td className="text-center font-semibold">{item.campaigns}</Td>
+              <Td>{item.memberSince || "—"}</Td>
+              <Td>{item.last}</Td>
+              <Td><VerifiedBadge verified={item.kyc === "Verified"} /></Td>
+              <Td><StatusCell status={item.status} meterValue={statusMeter} /></Td>
+              <Td>
+                <div className="table-actions flex flex-wrap gap-1.5">
                   <ActionButton onClick={() => handleViewDonorProfile(item)} icon={Eye} tone="info">Profile</ActionButton>
                   <ActionButton onClick={() => notify(`Composing message to ${item.name}...`)} icon={MessageSquare} tone="neutral">Message</ActionButton>
                   <ActionButton onClick={() => handleDonorStatusChange(item.email)} icon={item.status === "Active" ? PauseCircle : PlayCircle} tone={item.status === "Active" ? "warning" : "success"}>
@@ -880,118 +1208,52 @@ export default function AdminDashboard() {
                   </ActionButton>
                   <ActionButton onClick={() => downloadCsv(`${item.name}_report.csv`, [item])} icon={FileText} tone="success">Report</ActionButton>
                 </div>
+              </Td>
+            </tr>
+          );
+          })}
+          {filteredDonors.length === 0 && (
+            <tr>
+              <td colSpan="11" className="px-5 py-10 text-center text-sm font-medium text-slate-500">
+                No donors match your search or filters.
               </td>
             </tr>
-          ))}
+          )}
         </tbody>
       </TableShell>
+      <Pagination
+        page={donorPage}
+        totalPages={donorTotalPages}
+        totalItems={filteredDonors.length}
+        pageSize={DONOR_PAGE_SIZE}
+        onPageChange={setDonorPage}
+        label="donors"
+      />
       {renderDonorDetailsModal()}
     </section>
   );
 
-  function renderApprovals(compact = false) {
-    return (
-      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="mb-5 flex items-center justify-between">
-          <h2 className="font-bold text-slate-900">Pending Approvals</h2>
-          {compact && <button onClick={() => setActiveView("approvals")} className="text-sm font-bold text-teal-700 hover:text-teal-800">View all</button>}
-        </div>
-        <TableShell>
-          <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-            <tr><th className="px-5 py-4">Campaign</th><th>Submitted By</th><th>Category</th><th>Goal</th><th>Status</th><th>Documents</th><th className="min-w-[430px]">Actions</th></tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {approvalItems.map((item) => (
-              <tr key={item.campaign}>
-                <td className="px-5 py-5 font-bold">{item.campaign}</td>
-                <td>{item.by}</td>
-                <td>{item.category}</td>
-                <td>{item.goal}</td>
-                <td><StatusCell status="Pending Review" /></td>
-                <td><span className="inline-block rounded-full bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700 ring-1 ring-blue-100">{item.docs} files</span></td>
-                <td className="px-5 py-5">
-                  <div className="table-actions flex flex-wrap gap-2">
-                    <ActionButton onClick={() => notify(`Viewing documents for ${item.campaign}`)} icon={FileText} tone="info">Docs</ActionButton>
-                    <ActionButton onClick={() => notify(`Requesting additional info from ${item.by}`)} tone="warning">Request Info</ActionButton>
-                    <ActionButton onClick={() => handleApproval(item.campaign, "approve")} icon={CheckCircle} tone="primary">Approve</ActionButton>
-                    <ActionButton onClick={() => handleApproval(item.campaign, "reject")} tone="danger">Reject</ActionButton>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {approvalItems.length === 0 && (
-              <tr><td className="px-5 py-6 text-center text-slate-500" colSpan="7">No pending approvals.</td></tr>
-            )}
-          </tbody>
-        </TableShell>
-      </section>
-    );
-  }
-
-  function renderRecentDonations() {
-    return (
-      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="mb-5 font-bold text-slate-900">Recent Donations</h2>
-        <div className="space-y-4">
-          {donationsState.slice(0, 3).map((item) => (
-            <div key={`${item.donor}-${item.amount}`} className="flex items-center justify-between rounded-md bg-slate-50 p-3">
-              <div><p className="font-bold text-slate-800">{item.donor}</p><p className="text-xs text-slate-500">{item.campaign} - {item.date}</p></div>
-              <p className="font-bold text-green-600">{item.amount}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-    );
-  }
-
-  const renderReports = () => (
-    <>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard icon={CircleDollarSign} label="Total Raised" value="Rs 12,45,000" note="+10%" tone="teal" />
-        <StatCard icon={Inbox} label="Total Donations" value="820" note="+18%" tone="blue" />
-        <StatCard icon={Users} label="New Donors" value="124" note="+18%" tone="violet" />
-        <StatCard icon={BarChart3} label="Success Rate" value="64%" note="-2%" danger tone="amber" />
-      </div>
-      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-5 flex items-center justify-between">
-            <h2 className="font-bold">Revenue Overview</h2>
-            <span className="text-xs font-bold text-green-600">+18% growth</span>
-          </div>
-          <div className="relative h-64 rounded-lg bg-slate-50 px-5 pb-10 pt-6">
-            <div className="absolute inset-x-5 top-1/4 border-t border-dashed border-slate-200" />
-            <div className="absolute inset-x-5 top-1/2 border-t border-dashed border-slate-200" />
-            <div className="absolute inset-x-5 top-3/4 border-t border-dashed border-slate-200" />
-            <div className="relative z-10 grid h-full grid-cols-6 items-end gap-4">
-              {[42, 58, 74, 92, 84, 118].map((height, index) => (
-                <div key={height} className="relative flex h-full items-end justify-center">
-                  <div
-                    className={`w-full max-w-14 rounded-t-md ${index === 5 ? "bg-teal-700" : "bg-teal-300"}`}
-                    style={{ height: `${height}%` }}
-                  />
-                  <span className="absolute -bottom-7 text-xs font-semibold text-slate-500">
-                    {["May 1", "May 5", "May 10", "May 15", "May 20", "May 25"][index]}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="mt-5 flex gap-2">
-            <button onClick={() => downloadCsv("revenue_report.csv", [{ month: "May", revenue: "Rs 12,45,000" }])} className="flex-1 rounded-md bg-teal-700 px-3 py-2 text-xs font-bold text-white hover:bg-teal-800 transition-colors">Export Report</button>
-            <button onClick={() => notify("Scheduling report email...")} className="flex-1 rounded-md bg-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-300 transition-colors">Schedule Email</button>
-          </div>
-        </section>
-        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-5 font-bold">Donations by Category</h2>
-          <div className="mx-auto flex h-44 w-44 items-center justify-center rounded-full border-[28px] border-teal-600 text-center font-bold">820<br /><span className="text-xs">Total</span></div>
-          <div className="mt-5 flex gap-2">
-            <button onClick={() => notify("Generating detailed category report...")} className="flex-1 rounded-md bg-teal-700 px-3 py-2 text-xs font-bold text-white hover:bg-teal-800 transition-colors">View Details</button>
-            <button onClick={() => notify("Filtering categories...")} className="flex-1 rounded-md bg-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-300 transition-colors">Filter</button>
-          </div>
-        </section>
-      </div>
-    </>
+  const renderApprovals = () => (
+    <PendingApprovalsFull
+      items={approvalItems}
+      onApprove={(campaign) => handleApproval(campaign, "approve")}
+      onReject={(campaign) => handleApproval(campaign, "reject")}
+      onViewDocs={(campaign) => notify(`Viewing documents for ${campaign}`)}
+    />
   );
+
+  const renderReports = () => <AdminReportsPanel onExport={downloadCsv} />;
+
+  const renderPayments = () => (
+    <AdminPaymentsPanel
+      livePayments={livePaymentFeed}
+      onSimulate={() => platformApi.simulateDonation().catch(() => notify("Start platform server: npm run server"))}
+    />
+  );
+
+  const renderUserProfiles = () => <AdminUserProfilesPanel />;
+
+  const renderSecurity = () => <AdminSecurityPanel liveEvents={securityLiveEvents} />;
 
   const renderMessages = () => (
     <section className="grid min-h-[620px] grid-cols-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm lg:grid-cols-[340px_1fr]">
@@ -1025,174 +1287,39 @@ export default function AdminDashboard() {
   );
 
   const renderSettings = () => (
-    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-      {successMessage && (
-        <div className="mb-4 rounded-md bg-green-50 p-4 text-sm font-bold text-green-700 border border-green-200">
-          ✓ {successMessage}
-        </div>
-      )}
-      <div className="mb-6 flex gap-6 border-b border-slate-200 text-sm font-bold text-slate-600">
-        {["Profile", "Website", "Security", "Notifications", "Payment Settings"].map((tab) => (
-          <button onClick={() => { setSettingsTab(tab); setFormErrors({}); setTouchedFields({}); }} key={tab} className={`pb-3 transition-all ${settingsTab === tab ? "border-b-2 border-teal-700 text-teal-700" : "hover:text-slate-800"}`}>
-            {tab}
-          </button>
-        ))}
-      </div>
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        {settingsTab === "Profile" && (
-          <div>
-            <h2 className="mb-5 font-bold">Admin Profile</h2>
-            <div className="mb-5 flex items-center gap-4">
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-teal-700 text-2xl font-bold text-white">AD</div>
-              <button onClick={() => notify("Photo picker will open here.")} className="text-sm font-bold text-teal-700 hover:text-teal-800">Change Photo</button>
-            </div>
-            {["fullName", "email", "phone"].map((field) => {
-              const labels = { fullName: "Full Name", email: "Email", phone: "Phone Number" };
-              const error = formErrors[field] && touchedFields[field];
-              return (
-                <label key={field} className="mb-4 block text-sm font-bold text-slate-600">
-                  {labels[field]}
-                  <input 
-                    value={profileForm[field]}
-                    onChange={(e) => setProfileForm({ ...profileForm, [field]: e.target.value })}
-                    onBlur={() => handleFieldBlur(field)}
-                    className={`mt-2 w-full rounded-md border px-3 py-2 font-normal outline-none transition-colors focus:border-teal-600 ${error ? "border-red-500 bg-red-50" : "border-slate-200"}`}
-                    placeholder={field === "phone" ? "10-digit number" : ""}
-                    type={field === "email" ? "email" : "text"}
-                  />
-                  {error && <span className="mt-1 block text-xs text-red-600">{formErrors[field]}</span>}
-                </label>
-              );
-            })}
-            <button onClick={handleSaveProfile} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white hover:bg-teal-800 transition-colors">Save Changes</button>
-          </div>
-        )}
-        {settingsTab === "Website" && (
-          <div className="col-span-2">
-            <h2 className="mb-5 font-bold">Website Settings</h2>
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-sm font-bold text-slate-600">Hero Title</label>
-                <input value={websiteForm.heroTitle} onChange={(e) => setWebsiteForm({ ...websiteForm, heroTitle: e.target.value })} className="mb-4 w-full rounded-md border border-slate-200 px-3 py-2 outline-none focus:border-teal-600" placeholder="Bring hope to those in need" />
-
-                <label className="mb-2 block text-sm font-bold text-slate-600">Hero Subtitle</label>
-                <input value={websiteForm.heroSubtitle} onChange={(e) => setWebsiteForm({ ...websiteForm, heroSubtitle: e.target.value })} className="mb-4 w-full rounded-md border border-slate-200 px-3 py-2 outline-none focus:border-teal-600" placeholder="Create a campaign and help today" />
-
-                <label className="mb-2 block text-sm font-bold text-slate-600">Featured Campaigns</label>
-                <input type="number" value={websiteForm.featuredCount} onChange={(e) => setWebsiteForm({ ...websiteForm, featuredCount: Number(e.target.value) })} className="mb-4 w-32 rounded-md border border-slate-200 px-3 py-2 outline-none focus:border-teal-600" />
-
-                <label className="mb-2 block text-sm font-bold text-slate-600">Primary Color</label>
-                <input type="color" value={websiteForm.primaryColor} onChange={(e) => setWebsiteForm({ ...websiteForm, primaryColor: e.target.value })} className="mb-4 h-10 w-20 rounded-md border border-slate-200 p-1" />
-
-                <label className="flex items-center gap-3">
-                  <input type="checkbox" checked={websiteForm.enableCarousel} onChange={(e) => setWebsiteForm({ ...websiteForm, enableCarousel: e.target.checked })} className="rounded" />
-                  <span className="font-bold text-slate-700">Enable featured carousel on homepage</span>
-                </label>
-
-                <div className="mt-4">
-                  <label className="mb-2 block text-sm font-bold text-slate-600">Footer Text</label>
-                  <input value={websiteForm.footerText} onChange={(e) => setWebsiteForm({ ...websiteForm, footerText: e.target.value })} className="mb-4 w-full rounded-md border border-slate-200 px-3 py-2 outline-none focus:border-teal-600" placeholder="© 2026 MyFundraiser. All rights reserved." />
-                </div>
-
-                <div className="flex gap-3 pt-4">
-                  <button onClick={handleSaveWebsite} className="rounded-md bg-teal-700 px-4 py-2 font-bold text-white hover:bg-teal-800">Save Website</button>
-                  <button onClick={() => { setWebsiteForm({ heroTitle: '', heroSubtitle: '', featuredCount: 4, enableCarousel: true, footerText: '', primaryColor: '#0d9488' }); setFormErrors({}); }} className="rounded-md border border-slate-300 px-4 py-2 font-bold text-slate-700 hover:bg-slate-50">Reset</button>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="mb-3 text-sm font-bold text-slate-700">Live Preview</h3>
-                <div className="rounded-md border border-slate-200 p-4">
-                  <div className="mb-4 rounded-md p-6" style={{ background: `linear-gradient(90deg, ${websiteForm.primaryColor}22, ${websiteForm.primaryColor}11)` }}>
-                    <h2 className="text-lg font-bold" style={{ color: websiteForm.primaryColor }}>{websiteForm.heroTitle || 'Hero Title'}</h2>
-                    <p className="text-sm text-slate-600">{websiteForm.heroSubtitle || 'Hero subtitle goes here'}</p>
-                  </div>
-                  <div className="mb-3">
-                    <p className="text-xs text-slate-500">Featured campaigns shown: <b className="text-slate-900">{websiteForm.featuredCount}</b></p>
-                    <p className="text-xs text-slate-500">Carousel: <b className="text-slate-900">{websiteForm.enableCarousel ? 'Enabled' : 'Disabled'}</b></p>
-                  </div>
-                  <div className="mt-3 rounded-t-md border-t pt-3 text-xs text-slate-500">Footer preview: {websiteForm.footerText || '© 2026 MyFundraiser. All rights reserved.'}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        {settingsTab === "Profile" && (
-          <div>
-            <h2 className="mb-5 font-bold">Change Password</h2>
-            {["current", "new", "confirm"].map((field) => {
-              const labels = { current: "Current Password", new: "New Password", confirm: "Confirm New Password" };
-              const error = formErrors[field] && touchedFields[field];
-              return (
-                <label key={field} className="mb-4 block text-sm font-bold text-slate-600">
-                  {labels[field]}
-                  <input 
-                    value={passwordForm[field]}
-                    onChange={(e) => setPasswordForm({ ...passwordForm, [field]: e.target.value })}
-                    onBlur={() => handleFieldBlur(field)}
-                    type="password"
-                    className={`mt-2 w-full rounded-md border px-3 py-2 font-normal outline-none transition-colors focus:border-teal-600 ${error ? "border-red-500 bg-red-50" : "border-slate-200"}`}
-                  />
-                  {error && <span className="mt-1 block text-xs text-red-600">{formErrors[field]}</span>}
-                </label>
-              );
-            })}
-            <button onClick={handleUpdatePassword} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white hover:bg-teal-800 transition-colors">Update Password</button>
-          </div>
-        )}
-        {settingsTab === "Security" && (
-          <div className="col-span-2">
-            <h2 className="mb-5 font-bold">Security Settings</h2>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between rounded-lg border border-slate-200 p-4">
-                <div>
-                  <p className="font-bold">Two-Factor Authentication</p>
-                  <p className="text-xs text-slate-500">Add an extra layer of security</p>
-                </div>
-                <button className="rounded-md bg-slate-200 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-300 transition-colors">Enable</button>
-              </div>
-              <div className="flex items-center justify-between rounded-lg border border-slate-200 p-4">
-                <div>
-                  <p className="font-bold">Login History</p>
-                  <p className="text-xs text-slate-500">View your recent login activity</p>
-                </div>
-                <button className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white hover:bg-teal-800 transition-colors">View</button>
-              </div>
-            </div>
-          </div>
-        )}
-        {settingsTab === "Notifications" && (
-          <div className="col-span-2">
-            <h2 className="mb-5 font-bold">Notification Preferences</h2>
-            <div className="space-y-3">
-              {["Email Notifications", "SMS Alerts", "Push Notifications", "Weekly Reports"].map((item) => (
-                <label key={item} className="flex items-center gap-3 rounded-lg border border-slate-200 p-4 cursor-pointer hover:bg-slate-50">
-                  <input type="checkbox" className="rounded" defaultChecked />
-                  <span className="font-bold text-slate-700">{item}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-        )}
-        {settingsTab === "Payment Settings" && (
-          <div className="col-span-2">
-            <h2 className="mb-5 font-bold">Payment Configuration</h2>
-            <div className="space-y-4">
-              <div className="rounded-lg border border-slate-200 p-4">
-                <p className="font-bold">Bank Account</p>
-                <p className="text-sm text-slate-600">HDFC Bank - XXXX XXXX XXXX 5678</p>
-                <button className="mt-3 text-sm font-bold text-teal-700 hover:text-teal-800">Edit</button>
-              </div>
-              <div className="rounded-lg border border-slate-200 p-4">
-                <p className="font-bold">Commission Rate</p>
-                <p className="text-sm text-slate-600">5% per transaction</p>
-                <button className="mt-3 text-sm font-bold text-teal-700 hover:text-teal-800">Change</button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </section>
+    <AdminSettingsPanel
+      successMessage={successMessage}
+      settingsTab={settingsTab}
+      setSettingsTab={(tab) => {
+        setSettingsTab(tab);
+        setFormErrors({});
+        setTouchedFields({});
+      }}
+      profileForm={profileForm}
+      setProfileForm={setProfileForm}
+      passwordForm={passwordForm}
+      setPasswordForm={setPasswordForm}
+      websiteForm={websiteForm}
+      setWebsiteForm={setWebsiteForm}
+      formErrors={formErrors}
+      touchedFields={touchedFields}
+      handleFieldBlur={handleFieldBlur}
+      handleSaveProfile={handleSaveProfile}
+      handleUpdatePassword={handleUpdatePassword}
+      handleSaveWebsite={handleSaveWebsite}
+      onResetWebsite={() => {
+        setWebsiteForm({
+          heroTitle: "",
+          heroSubtitle: "",
+          featuredCount: 4,
+          enableCarousel: true,
+          footerText: "",
+          primaryColor: "#0d9488",
+        });
+        setFormErrors({});
+      }}
+      notify={notify}
+    />
   );
 
   const content = {
@@ -1200,198 +1327,86 @@ export default function AdminDashboard() {
     campaigns: renderCampaigns,
     donations: renderDonations,
     donors: renderDonors,
-    approvals: () => renderApprovals(false),
+    payments: renderPayments,
+    userProfiles: renderUserProfiles,
+    approvals: renderApprovals,
     reports: renderReports,
+    security: renderSecurity,
     messages: renderMessages,
     settings: renderSettings,
   };
 
   return (
     <main className="min-h-screen bg-slate-50 admin-page">
-      <style>{`
-        .admin-page {
-          width: 100%;
-          overflow-x: hidden;
-        }
-        .admin-page * {
-          box-sizing: border-box;
-        }
-        .admin-page section,
-        .admin-page .dashboard-card,
-        .admin-page .admin-table,
-        .admin-page .kpi-card {
-          border-radius: 18px;
-        }
-        .admin-page section,
-        .admin-page .dashboard-card {
-          border-color: #dbe3ee;
-          box-shadow: 0 8px 24px rgba(15,23,42,0.05);
-          transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
-        }
-        .admin-page section:hover,
-        .admin-page .dashboard-card:hover {
-          border-color: #bdd7d2;
-          box-shadow: 0 18px 38px rgba(15,23,42,0.09);
-        }
-        .admin-page input, .admin-page select, .admin-page textarea, .admin-page .toolbar-input {
-          box-shadow: 0 8px 20px rgba(2,6,23,0.08);
-          transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease, background-color .18s ease;
-          border-radius: .9rem;
-          min-height: 44px;
-        }
-        .admin-page select {
-          appearance: none;
-          min-width: 150px;
-          padding-right: 2.5rem;
-          background-color: #fff;
-          background-image: url("data:image/svg+xml,%3Csvg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%230f172a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-          background-repeat: no-repeat;
-          background-position: right .8rem center;
-          background-size: 18px;
-        }
-        .admin-page .admin-toolbar-actions {
-          align-items: center;
-        }
-        .admin-page .admin-toolbar-actions > select,
-        .admin-page .admin-toolbar-actions > button {
-          min-height: 44px;
-        }
-        .admin-page input:hover, .admin-page select:hover, .admin-page textarea:hover {
-          border-color: #0f766e;
-          box-shadow: 0 14px 30px rgba(15,118,110,0.16);
-          transform: translateY(-2px);
-        }
-        .admin-page input:focus, .admin-page select:focus, .admin-page textarea:focus{
-          box-shadow: 0 14px 30px rgba(2,6,23,0.12);
-          transform: translateY(-4px);
-        }
-        .admin-page button,
-        .admin-page select,
-        .admin-page input[type="checkbox"],
-        .admin-page input[type="color"],
-        .admin-page input[type="file"],
-        .admin-page tbody tr {
-          cursor: pointer;
-        }
-        .admin-page input:not([type="checkbox"]):not([type="color"]):not([type="file"]),
-        .admin-page textarea {
-          cursor: text;
-        }
-        .admin-page button:disabled {
-          cursor: not-allowed;
-        }
-        .admin-page button {
-          transition: background-color .18s ease, border-color .18s ease, box-shadow .18s ease, color .18s ease, transform .18s ease;
-        }
-        .admin-page button:not(:disabled):hover {
-          box-shadow: 0 10px 22px rgba(2,6,23,0.12);
-          transform: translateY(-1px);
-        }
-        .admin-page .kpi-card {
-          cursor: pointer;
-          min-height: 158px;
-          transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease, background-color .18s ease;
-        }
-        .admin-page .kpi-card:hover {
-          border-color: #99f6e4;
-          box-shadow: 0 18px 36px rgba(15,23,42,0.12);
-          transform: translateY(-4px);
-          background: linear-gradient(180deg, #ffffff 0%, #f8fffd 100%);
-        }
-        .admin-page tbody tr {
-          transition: background-color .18s ease, box-shadow .18s ease, transform .18s ease;
-        }
-        .admin-page tbody tr:hover {
-          background: #f8fafc;
-          box-shadow: inset 3px 0 0 #0f766e;
-        }
-        .admin-page .admin-table thead th {
-          white-space: nowrap;
-          letter-spacing: .02em;
-          color: #64748b;
-          font-weight: 800;
-        }
-        .admin-page .admin-table tbody td {
-          vertical-align: middle;
-          white-space: nowrap;
-        }
-        .admin-page .admin-table tbody td:first-child,
-        .admin-page .admin-table tbody td:nth-child(2) {
-          white-space: normal;
-        }
-        .admin-page .table-actions {
-          align-items: center;
-          min-width: max-content;
-        }
-        .admin-page .status-cell {
-          width: clamp(130px, 10vw, 190px);
-        }
-        .admin-page .floating-donor,
-        .admin-page .admin-table tbody tr,
-        .admin-page .rounded-xl.bg-slate-50 {
-          transition: background-color .18s ease, box-shadow .18s ease, transform .18s ease;
-        }
-        .admin-page .floating-donor:hover,
-        .admin-page .rounded-xl.bg-slate-50:hover {
-          transform: translateY(-3px);
-          box-shadow: 0 14px 28px rgba(15,23,42,0.1);
-        }
-        .floating-donor { animation: floatY 6s ease-in-out infinite; }
-        @keyframes floatY { 0%{transform:translateY(0)} 50%{transform:translateY(-8px)} 100%{transform:translateY(0)} }
-      `}</style>
+      <style>{adminPageStyles}</style>
       <div className="flex min-h-screen">
-        <aside className="hidden w-64 shrink-0 bg-slate-950 text-white lg:flex lg:flex-col">
-          <div className="flex h-16 items-center gap-2 border-b border-white/10 px-5">
-            <ShieldCheck size={18} />
-            <span className="text-sm font-bold">MyFundraiser</span>
-          </div>
+        <AdminSidebar
+          navItems={navItemsWithBadges}
+          activeView={activeView}
+          onNavigate={setActiveView}
+          onLogout={handleLogout}
+          onUpgrade={() => notify("Upgrade request submitted.")}
+        />
 
-          <nav className="flex-1 space-y-1 px-3 py-5">
-            {navItems.map((item) => {
+        <section className="flex min-w-0 flex-1 flex-col">
+          <header className="flex items-center justify-between gap-4 border-b border-teal-900/20 bg-teal-800 px-5 py-3 text-white sm:px-6">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-400 text-sm font-bold text-teal-950">
+                {adminSession.name.split(" ").map((p) => p[0]).slice(0, 2).join("") || "AD"}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold">Good morning, {adminSession.name}</p>
+                <p className="truncate text-xs text-teal-100">{adminSession.email}</p>
+              </div>
+            </div>
+            <button type="button" className="shrink-0 rounded-full p-2 hover:bg-white/10" aria-label="Notifications">
+              <Bell size={18} />
+            </button>
+          </header>
+
+          <nav className="flex items-center gap-2 overflow-x-auto border-b border-slate-200 bg-white px-4 py-2 md:hidden">
+            {navItemsWithBadges.map((item) => {
               const Icon = item.icon;
               const active = activeView === item.key;
               return (
                 <button
                   key={item.key}
+                  type="button"
                   onClick={() => setActiveView(item.key)}
-                  className={`flex w-full items-center justify-between rounded-md px-3 py-2.5 text-left text-sm font-bold ${active ? "bg-teal-700 text-white" : "text-slate-300 hover:bg-white/10"}`}
+                  className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold ${
+                    active ? "bg-teal-800 text-white" : "bg-slate-100 text-slate-600"
+                  }`}
                 >
-                  <span className="flex items-center gap-3"><Icon size={16} />{item.label}</span>
-                  {item.badge && <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs text-white">{item.badge}</span>}
+                  <Icon size={14} />
+                  {item.label}
                 </button>
               );
             })}
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="ml-auto flex shrink-0 items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700"
+            >
+              <LogOut size={14} />
+              Logout
+            </button>
           </nav>
 
-          <div className="m-3 rounded-lg bg-teal-900/70 p-4">
-            <p className="text-sm font-bold">Upgrade to Pro</p>
-            <p className="mt-2 text-xs text-teal-100">Unlock advanced reports and analytics.</p>
-            <button onClick={() => notify("Upgrade request submitted.")} className="mt-4 w-full rounded-md bg-white px-3 py-2 text-xs font-bold text-teal-800">Upgrade Now</button>
-          </div>
-        </aside>
-
-        <section className="min-w-0 flex-1">
-          <header className="flex h-16 items-center justify-between bg-teal-800 px-6 text-white">
-            <div className="flex items-center gap-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-teal-400 text-sm font-bold text-teal-950">AD</div>
-              <div>
-                <p className="text-sm font-bold">Good morning, Admin!</p>
-                <p className="text-xs text-teal-100">Welcome back to your fundraiser dashboard.</p>
+          <div className="admin-content-area w-full max-w-none px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
+            {activeView !== "dashboard" && activeView !== "approvals" && (
+              <div className="mb-6">
+                <h1 className="text-2xl font-bold text-slate-950">{title}</h1>
+                <p className="mt-1 text-sm text-slate-500">Manage fundraiser operations from one workspace.</p>
+                <div className="mt-3">
+                  <LiveSyncBadge active={connected && infra.api} />
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-8 text-right">
-              <div><p className="text-xs text-teal-100">Rs 24.8L</p><p className="text-[11px] text-teal-100">Raised today</p></div>
-              <div><p className="text-xs text-teal-100">38</p><p className="text-[11px] text-teal-100">Active campaigns</p></div>
-              <div><p className="text-xs text-teal-100">1,247</p><p className="text-[11px] text-teal-100">Total donors</p></div>
-              <Bell size={18} />
-            </div>
-          </header>
-
-          <div className="w-full max-w-[1920px] px-6 py-6 2xl:px-8">
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold text-slate-950">{title}</h1>
-              <p className="mt-1 text-sm text-slate-500">Manage fundraiser operations from one clean workspace.</p>
-            </div>
+            )}
+            {activeView === "approvals" && (
+              <div className="mb-4">
+                <LiveSyncBadge active={connected && infra.api} />
+              </div>
+            )}
             {content[activeView]()}
           </div>
         </section>

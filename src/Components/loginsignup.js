@@ -1,80 +1,100 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom"; 
+import { useNavigate } from "react-router-dom";
+import { ShieldCheck, User } from "lucide-react";
+import platformApi from "../services/platformApi";
 
 const API_URL = "http://localhost:8081/user";
-const ICON_SIZE = "20";
+const ICON_SIZE = "18";
+
 const DEMO_CREDENTIALS = {
   USER: {
     label: "User",
     email: "user@myfundraiser.com",
-    password: "user123",
+    password: "MyFundraiser#User2026",
     redirect: "/dashboard",
   },
   ADMIN: {
     label: "Admin",
     email: "admin@myfundraiser.com",
-    password: "admin123",
+    password: "MyFundraiser#Admin2026",
     redirect: "/admin",
   },
 };
 
 const MailIcon = (
-  <svg xmlns="http://www.w3.org/2000/svg" width={ICON_SIZE} height={ICON_SIZE}
-    viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-    strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
+  <svg xmlns="http://www.w3.org/2000/svg" width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-400">
     <rect width="20" height="16" x="2" y="4" rx="2" />
     <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
   </svg>
 );
 
 const LockIcon = (
-  <svg xmlns="http://www.w3.org/2000/svg" width={ICON_SIZE} height={ICON_SIZE}
-    viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-    strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
+  <svg xmlns="http://www.w3.org/2000/svg" width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-400">
     <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
   </svg>
 );
 
 const UserIcon = (
-  <svg xmlns="http://www.w3.org/2000/svg" width={ICON_SIZE} height={ICON_SIZE}
-    viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-    strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
+  <svg xmlns="http://www.w3.org/2000/svg" width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-400">
     <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
     <circle cx="12" cy="7" r="4" />
   </svg>
 );
 
-const FormInput = ({ iconSvg, type, name, placeholder, value, onChange, error }) => (
-  <div className="relative mb-5">
-    <div className="absolute left-4 top-[22px] -translate-y-1/2">{iconSvg}</div>
+const FormInput = ({ iconSvg, type, name, placeholder, value, onChange, error, autoComplete }) => (
+  <div className="relative mb-3">
+    <div className="absolute left-3 top-1/2 -translate-y-1/2">{iconSvg}</div>
     <input
       type={type}
       name={name}
       value={value}
       onChange={onChange}
+      autoComplete={autoComplete}
       placeholder={placeholder}
-      className={`w-full rounded-2xl border bg-white px-4 py-3.5 pl-12 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-teal-500 hover:shadow-lg focus:border-teal-700 focus:ring-4 focus:ring-teal-100
-        ${error ? "border-red-500 bg-red-50" : "border-slate-200"} `}
+      className={`w-full rounded-lg border bg-white py-2.5 pl-10 pr-3 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-teal-700 focus:ring-2 focus:ring-teal-100 ${
+        error ? "border-red-400 bg-red-50" : "border-slate-200"
+      }`}
     />
-    {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
+    {error && <p className="mt-1 text-xs font-medium text-red-600">{error}</p>}
   </div>
 );
 
-const Loginsignup = () => {
+const FeedbackToast = ({ text, type, onClose }) => {
+  if (!text) return null;
+  const success = type === "success";
+  return (
+    <div
+      role="status"
+      className={`fixed right-4 top-4 z-50 max-w-sm rounded-xl border px-4 py-3 text-sm shadow-lg ${
+        success ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-red-200 bg-red-50 text-red-900"
+      }`}
+    >
+      <div className="flex justify-between gap-2">
+        <p className="font-medium">{text}</p>
+        <button type="button" onClick={onClose} className="opacity-50 hover:opacity-100" aria-label="Dismiss">
+          ×
+        </button>
+      </div>
+    </div>
+  );
+};
 
-  const navigate = useNavigate(); 
+const Loginsignup = () => {
+  const navigate = useNavigate();
   const [isLoginOpen, setLoginOpen] = useState(true);
   const [isRegisterOpen, setRegisterOpen] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [selectedRole, setSelectedRole] = useState("USER");
+  const [rememberMe, setRememberMe] = useState(true);
 
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
-  const [registerForm, setRegisterForm] = useState({ name: "", email: "", password: "" });
+  const [registerForm, setRegisterForm] = useState({ name: "", email: "", password: "", phone: "" });
   const [errors, setErrors] = useState({});
 
-  
+  const activeAccount = DEMO_CREDENTIALS[selectedRole];
+
   const handleChange = (e, formType) => {
     const { name, value } = e.target;
     if (formType === "login") {
@@ -82,303 +102,267 @@ const Loginsignup = () => {
     } else {
       setRegisterForm((prev) => ({ ...prev, [name]: value }));
     }
-    setErrors((prev) => ({ ...prev, [name]: null }));
-  };
-
-  const validateLogin = () => {
-    const newErrors = {};
-    if (!loginForm.email) newErrors.email = "Email is required.";
-    if (loginForm.password.length < 6) newErrors.password = "Password must be at least 6 characters.";
-    return newErrors;
-  };
-
-  const validateRegister = () => {
-    const newErrors = {};
-    if (!registerForm.name) newErrors.name = "Name is required.";
-    if (!registerForm.email) newErrors.email = "Email is required.";
-    if (registerForm.password.length < 8) newErrors.password = "Password must be at least 8 characters.";
-    return newErrors;
-  };
-
-  const saveUserSession = (email, role = "USER", name = email.split("@")[0]) => {
-    localStorage.setItem("token", `${role.toLowerCase()}_token_` + Date.now());
-    localStorage.setItem("email", email);
-    localStorage.setItem("username", name);
-    localStorage.setItem("role", role);
-    localStorage.setItem("user", JSON.stringify({ name, email, role }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const fillCredentials = (role) => {
+    const account = DEMO_CREDENTIALS[role];
     setSelectedRole(role);
-    setLoginForm({
-      email: DEMO_CREDENTIALS[role].email,
-      password: DEMO_CREDENTIALS[role].password,
-    });
-    setErrors({});
-    setFeedback(null);
+    setLoginForm({ email: account.email, password: account.password });
+  };
+
+  const validateLogin = () => {
+    const next = {};
+    if (!loginForm.email.trim()) next.email = "Email is required";
+    if (!loginForm.password) next.password = "Password is required";
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
+  const validateRegister = () => {
+    const next = {};
+    if (!registerForm.name.trim()) next.name = "Name is required";
+    if (!registerForm.email.trim()) next.email = "Email is required";
+    if (!registerForm.password || registerForm.password.length < 8) next.password = "Min 8 characters";
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
+  const completeLogin = (demoAccount) => {
+    localStorage.setItem("token", `demo-${demoAccount.label.toLowerCase()}`);
+    localStorage.setItem("email", loginForm.email);
+    localStorage.setItem("role", selectedRole);
+    localStorage.setItem("user", JSON.stringify({ name: demoAccount.label, email: loginForm.email, role: selectedRole }));
+    if (rememberMe) localStorage.setItem("rememberedRole", selectedRole);
+    platformApi.logSecurityEvent({ type: "Login", user: loginForm.email, status: "Success" }).catch(() => {});
+    setFeedback({ text: `${demoAccount.label} login successful.`, type: "success" });
+    setTimeout(() => navigate(demoAccount.redirect), 600);
   };
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
-    const validationErrors = validateLogin();
-
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      setFeedback({ text: "Validation failed.", type: "error" });
+    if (!validateLogin()) {
+      setFeedback({ text: "Please fix the highlighted fields.", type: "error" });
       return;
     }
 
     const demoAccount = DEMO_CREDENTIALS[selectedRole];
-    const isDemoLogin =
-      loginForm.email.trim().toLowerCase() === demoAccount.email &&
-      loginForm.password === demoAccount.password;
-
-    if (isDemoLogin) {
-      saveUserSession(loginForm.email, selectedRole, selectedRole === "ADMIN" ? "Admin" : "Demo User");
-      setFeedback({ text: `${demoAccount.label} login successful. Redirecting...`, type: "success" });
-      setTimeout(() => {
-        navigate(demoAccount.redirect);
-      }, 700);
+    if (loginForm.email === demoAccount.email && loginForm.password === demoAccount.password) {
+      completeLogin(demoAccount);
       return;
     }
 
     try {
-      await axios.post(`${API_URL}/login`, { email: loginForm.email, password: loginForm.password });
-      
-      saveUserSession(loginForm.email, selectedRole);
-
-      setFeedback({ text: `${DEMO_CREDENTIALS[selectedRole].label} login successful. Redirecting...`, type: "success" });
-
-      setTimeout(() => {
-        navigate(DEMO_CREDENTIALS[selectedRole].redirect); 
-      }, 700);
-
-    } catch (error) {
-      const msg = error.response?.data || "Invalid credentials";
-      const message = typeof msg === 'string' ? msg : msg.error;
-
-      if (message === "Invalid credentials") {
-        setFeedback({ text: "Account not found or password is incorrect. Please register first.", type: "error" });
-        setRegisterForm({
-          name: "",
-          email: loginForm.email,
-          password: loginForm.password
-        });
-
-        setTimeout(() => {
-          setLoginOpen(false);
-          setRegisterOpen(true);
-          setErrors({});
-        }, 1200);
-        return;
-      }
-
+      const res = await axios.post(`${API_URL}/login`, {
+        email: loginForm.email,
+        password: loginForm.password,
+      });
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("email", loginForm.email);
+      localStorage.setItem("role", "USER");
+      navigate("/dashboard");
+    } catch (err) {
+      const message = err.response?.data?.message || err.response?.data;
       setFeedback({ text: message || "Invalid credentials", type: "error" });
     }
   };
 
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
-    const validationErrors = validateRegister();
-
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      return;
-    }
-
+    if (!validateRegister()) return;
     try {
-      await axios.post(`${API_URL}`, { 
-        name: registerForm.name,
-        email: registerForm.email, 
-        password: registerForm.password 
-      });
-
-      saveUserSession(registerForm.email, "USER", registerForm.name);
-
+      await axios.post(`${API_URL}/register`, registerForm);
+      setFeedback({ text: "Registration successful.", type: "success" });
+      setRegisterOpen(false);
+      setLoginOpen(true);
+    } catch (err) {
       setFeedback({
-        text: "Registration Successful! Welcome.",
-        type: "success"
-      });
-
-      setTimeout(() => {
-        navigate("/dashboard");
-      }, 700);
-
-    } catch (error) {
-      const errorMsg = error.response?.data;
-      setFeedback({
-        text: typeof errorMsg === 'string' ? errorMsg : "Registration Failed",
-        type: "error"
+        text: err.response?.data?.message || "Registration failed",
+        type: "error",
       });
     }
   };
 
   useEffect(() => {
-    if (feedback) {
-      const timer = setTimeout(() => setFeedback(null), 3000);
-      return () => clearTimeout(timer);
+    const remembered = localStorage.getItem("rememberedRole");
+    if (remembered && DEMO_CREDENTIALS[remembered]) {
+      setSelectedRole(remembered);
+      setLoginForm({
+        email: DEMO_CREDENTIALS[remembered].email,
+        password: DEMO_CREDENTIALS[remembered].password,
+      });
     }
+  }, []);
+
+  useEffect(() => {
+    if (!feedback) return undefined;
+    const timer = setTimeout(() => setFeedback(null), 4000);
+    return () => clearTimeout(timer);
   }, [feedback]);
 
   return (
-    <div className="min-h-[calc(100vh-140px)] bg-slate-50 px-5 py-10">
-      <div className="mx-auto grid min-h-[680px] w-full max-w-7xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl lg:grid-cols-[1.05fr_0.95fr]">
-        <section className="relative hidden bg-teal-900 p-12 text-white lg:flex lg:flex-col lg:justify-between">
-          <img
-            src="https://images.unsplash.com/photo-1593113598332-cd288d649433?auto=format&fit=crop&w=1400&q=85"
-            alt="Volunteers preparing donation boxes for people in need"
-            className="absolute inset-0 h-full w-full object-cover"
+    <div className="flex min-h-[calc(100vh-120px)] items-center justify-center bg-slate-100 px-4 py-8">
+      <FeedbackToast text={feedback?.text} type={feedback?.type} onClose={() => setFeedback(null)} />
+
+      <div className="grid w-full max-w-4xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl lg:grid-cols-[300px_1fr]">
+        {/* Brand panel — compact pattern, no large photo */}
+        <aside
+          className="relative hidden flex-col justify-between overflow-hidden bg-teal-900 p-6 text-white lg:flex"
+          style={{
+            backgroundImage: `radial-gradient(circle at 20% 20%, rgba(255,255,255,0.08) 0%, transparent 45%),
+              radial-gradient(circle at 80% 70%, rgba(45,212,191,0.15) 0%, transparent 40%),
+              linear-gradient(160deg, #0f766e 0%, #134e4a 55%, #0f172a 100%)`,
+          }}
+        >
+          <div
+            className="pointer-events-none absolute inset-0 opacity-[0.07]"
+            style={{
+              backgroundImage: `repeating-linear-gradient(45deg, #fff 0, #fff 1px, transparent 0, transparent 12px)`,
+            }}
           />
-          <div className="absolute inset-0 bg-gradient-to-br from-teal-950/95 via-teal-900/78 to-slate-950/88" />
           <div className="relative">
-            <p className="mb-4 inline-flex rounded-full bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-wide text-teal-100 ring-1 ring-white/15">
-              MyFundraiser secure access
-            </p>
-            <h1 className="max-w-lg text-5xl font-black leading-tight">
-              Manage campaigns, donations, and impact from one place.
-            </h1>
-            <p className="mt-5 max-w-xl text-base font-medium leading-7 text-teal-50">
-              Choose the correct role before signing in. Admin accounts open the operations dashboard, while user accounts open the personal fundraising dashboard.
+            <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/20">
+              <ShieldCheck size={20} className="text-teal-100" />
+            </div>
+            <h1 className="text-xl font-bold leading-snug">MyFundraiser</h1>
+            <p className="mt-2 text-sm leading-relaxed text-teal-100/90">
+              Sign in to manage campaigns, track donations, and run your workspace.
             </p>
           </div>
+          <ul className="relative space-y-2 text-xs text-teal-100/80">
+            <li>· Secure local demo accounts</li>
+            <li>· User → Dashboard · Admin → Console</li>
+          </ul>
+        </aside>
 
-          <div className="relative grid grid-cols-3 gap-4">
-            {[
-              ["38", "Active campaigns"],
-              ["1.2K", "Donors"],
-              ["24.8L", "Raised"],
-            ].map(([value, label]) => (
-              <div key={label} className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/15 backdrop-blur">
-                <p className="text-2xl font-black">{value}</p>
-                <p className="mt-1 text-xs font-semibold text-teal-100">{label}</p>
+        {/* Form */}
+        <section className="p-6 sm:p-8">
+          <div className="mb-5 flex items-center gap-2 lg:hidden">
+            <ShieldCheck size={18} className="text-teal-700" />
+            <span className="text-sm font-bold text-slate-900">MyFundraiser</span>
+          </div>
+
+          <h2 className="text-xl font-bold text-slate-900">{isLoginOpen ? "Sign in" : "Create account"}</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            {isLoginOpen ? "Choose role and enter credentials." : "Register as a new user."}
+          </p>
+
+          {isLoginOpen && (
+            <form className="mt-5" onSubmit={handleLoginSubmit} autoComplete="off">
+              <div className="mb-3 flex gap-1 rounded-lg bg-slate-100 p-1">
+                {Object.entries(DEMO_CREDENTIALS).map(([role, account]) => (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => setSelectedRole(role)}
+                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 text-xs font-bold transition ${
+                      selectedRole === role ? "bg-teal-800 text-white" : "text-slate-600"
+                    }`}
+                  >
+                    {role === "ADMIN" ? <ShieldCheck size={14} /> : <User size={14} />}
+                    {account.label}
+                  </button>
+                ))}
               </div>
-            ))}
-          </div>
-        </section>
 
-        <section className="flex items-center justify-center bg-slate-50 px-5 py-10 sm:px-10">
-          <div className="w-full max-w-md">
-            <div className="mb-6 text-center lg:text-left">
-              <p className="text-sm font-bold uppercase tracking-wide text-teal-700">
-                {isLoginOpen ? "Welcome back" : "Create your account"}
-              </p>
-              <h2 className="mt-2 text-3xl font-black text-slate-950">
-                {isLoginOpen ? "Sign in to continue" : "Register as a fundraiser"}
-              </h2>
-              <p className="mt-2 text-sm font-medium text-slate-500">
-                {isLoginOpen ? "Select your role and use the matching credentials." : "New registrations are created as user accounts."}
-              </p>
-            </div>
-
-            <div className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-xl">
-              {isLoginOpen && (
-                <form onSubmit={handleLoginSubmit}>
-                  <div className="mb-5 grid grid-cols-2 gap-3 rounded-2xl bg-slate-100 p-1.5">
-                    {Object.entries(DEMO_CREDENTIALS).map(([role, account]) => (
-                      <button
-                        key={role}
-                        type="button"
-                        onClick={() => setSelectedRole(role)}
-                        className={`rounded-xl px-4 py-3 text-sm font-black transition ${
-                          selectedRole === role
-                            ? "bg-white text-teal-800 shadow-sm"
-                            : "text-slate-500 hover:text-slate-900"
-                        }`}
-                      >
-                        {account.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="mb-5 grid gap-3">
-                    {Object.entries(DEMO_CREDENTIALS).map(([role, account]) => (
-                      <button
-                        key={role}
-                        type="button"
-                        onClick={() => fillCredentials(role)}
-                        className={`rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-lg ${
-                          selectedRole === role ? "border-teal-200 bg-teal-50" : "border-slate-200 bg-white"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="text-sm font-black text-slate-900">{account.label} credentials</p>
-                          <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-teal-700 ring-1 ring-teal-100">
-                            Use
-                          </span>
-                        </div>
-                        <p className="mt-2 text-xs font-semibold text-slate-500">Email: {account.email}</p>
-                        <p className="text-xs font-semibold text-slate-500">Password: {account.password}</p>
-                      </button>
-                    ))}
-                  </div>
-
-                  <FormInput iconSvg={MailIcon} type="email" name="email" placeholder="Email"
-                    value={loginForm.email} onChange={(e) => handleChange(e, "login")} error={errors.email} />
-
-                  <FormInput iconSvg={LockIcon} type="password" name="password" placeholder="Password"
-                    value={loginForm.password} onChange={(e) => handleChange(e, "login")} error={errors.password} />
-
-                  <button className="w-full rounded-2xl bg-teal-700 py-3.5 text-sm font-black text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-teal-800 hover:shadow-xl">
-                    Login as {DEMO_CREDENTIALS[selectedRole].label}
+              <div className="mb-3 flex flex-wrap gap-2">
+                {Object.entries(DEMO_CREDENTIALS).map(([role, account]) => (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => fillCredentials(role)}
+                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-teal-400 hover:text-teal-800"
+                  >
+                    Fill {account.label} demo
                   </button>
+                ))}
+              </div>
 
-                  <p className="text-center mt-6 text-sm font-medium text-slate-600">
-                    Don’t have an account?
-                    <button type="button" className="text-[#007A8E] ml-1 font-black hover:underline"
-                      onClick={() => { setLoginOpen(false); setRegisterOpen(true); setErrors({}); setFeedback(null); }}>
-                      Register
-                    </button>
-                  </p>
-                </form>
-              )}
+              <p className="mb-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
+                Opens <span className="font-mono text-slate-700">{activeAccount.redirect}</span> · Chrome password warnings are from old demo leaks, not this app.
+              </p>
 
-              {isRegisterOpen && (
-                <form onSubmit={handleRegisterSubmit}>
-                  <FormInput iconSvg={UserIcon} type="text" name="name" placeholder="Full Name"
-                    value={registerForm.name} onChange={(e) => handleChange(e, "register")} error={errors.name} />
+              <FormInput
+                iconSvg={MailIcon}
+                type="email"
+                name="email"
+                placeholder="Email"
+                autoComplete="username"
+                value={loginForm.email}
+                onChange={(e) => handleChange(e, "login")}
+                error={errors.email}
+              />
+              <FormInput
+                iconSvg={LockIcon}
+                type="password"
+                name="password"
+                placeholder="Password"
+                autoComplete="current-password"
+                value={loginForm.password}
+                onChange={(e) => handleChange(e, "login")}
+                error={errors.password}
+              />
 
-                  <FormInput iconSvg={MailIcon} type="email" name="email" placeholder="Email"
-                    value={registerForm.email} onChange={(e) => handleChange(e, "register")} error={errors.email} />
+              <label className="mb-4 flex items-center gap-2 text-xs font-medium text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="rounded border-slate-300 text-teal-700"
+                />
+                Remember role
+              </label>
 
-                  <FormInput iconSvg={LockIcon} type="password" name="password" placeholder="Password"
-                    value={registerForm.password} onChange={(e) => handleChange(e, "register")} error={errors.password} />
+              <button type="submit" className="w-full rounded-lg bg-teal-800 py-2.5 text-sm font-bold text-white hover:bg-teal-900">
+                Login as {activeAccount.label}
+              </button>
 
-                  <button className="w-full rounded-2xl bg-teal-700 py-3.5 text-sm font-black text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-teal-800 hover:shadow-xl">
-                    Create User Account
-                  </button>
+              <p className="mt-4 text-center text-sm text-slate-600">
+                No account?
+                <button
+                  type="button"
+                  className="ml-1 font-bold text-teal-700 hover:underline"
+                  onClick={() => {
+                    setLoginOpen(false);
+                    setRegisterOpen(true);
+                    setErrors({});
+                  }}
+                >
+                  Register
+                </button>
+              </p>
+            </form>
+          )}
 
-                  <p className="text-center mt-6 text-sm font-medium text-slate-600">
-                    Already have an account?
-                    <button type="button" className="text-[#007A8E] ml-1 font-black hover:underline"
-                      onClick={() => { setRegisterOpen(false); setLoginOpen(true); setErrors({}); setFeedback(null); }}>
-                      Login
-                    </button>
-                  </p>
-                </form>
-              )}
-            </div>
-          </div>
+          {isRegisterOpen && (
+            <form className="mt-5" onSubmit={handleRegisterSubmit}>
+              <FormInput iconSvg={UserIcon} type="text" name="name" placeholder="Full name" value={registerForm.name} onChange={(e) => handleChange(e, "register")} error={errors.name} />
+              <FormInput iconSvg={MailIcon} type="email" name="email" placeholder="Email" value={registerForm.email} onChange={(e) => handleChange(e, "register")} error={errors.email} />
+              <FormInput iconSvg={UserIcon} type="tel" name="phone" placeholder="Phone (optional)" value={registerForm.phone} onChange={(e) => handleChange(e, "register")} error={errors.phone} />
+              <FormInput iconSvg={LockIcon} type="password" name="password" placeholder="Password (8+ chars)" value={registerForm.password} onChange={(e) => handleChange(e, "register")} error={errors.password} />
+
+              <button type="submit" className="w-full rounded-lg bg-teal-800 py-2.5 text-sm font-bold text-white hover:bg-teal-900">
+                Create account
+              </button>
+
+              <p className="mt-4 text-center text-sm text-slate-600">
+                Have an account?
+                <button
+                  type="button"
+                  className="ml-1 font-bold text-teal-700 hover:underline"
+                  onClick={() => {
+                    setRegisterOpen(false);
+                    setLoginOpen(true);
+                    setErrors({});
+                  }}
+                >
+                  Sign in
+                </button>
+              </p>
+            </form>
+          )}
         </section>
       </div>
-
-      <FeedbackMessage text={feedback?.text} type={feedback?.type} />
-    </div>
-  );
-};
-
-const FeedbackMessage = ({ text, type }) => {
-  if (!text) return null;
-
-  return (
-    <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 
-        bg-white text-black px-8 py-6 rounded-xl shadow-2xl border-2 z-50
-        w-[350px] text-center">
-
-      <h2 className={`text-2xl font-bold mb-3 ${type === "success" ? "text-green-600" : "text-red-600"}`}>
-        {type === "success" ? "Success!" : "Action Failed"}
-      </h2>
-
-      <p className="text-lg text-gray-700">{text}</p>
     </div>
   );
 };
