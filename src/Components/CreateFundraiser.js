@@ -1,11 +1,22 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+
+const DEFAULT_PREVIEW_IMAGE =
+  "https://images.unsplash.com/photo-1531746790731-6c087fecd65a?auto=format&fit=crop&w=1600&q=80";
+
+const getStoredUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem("user")) || {};
+  } catch {
+    return {};
+  }
+};
 
 const CreateFundraiser = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const user =
-    JSON.parse(localStorage.getItem("user")) || {};
+  const user = getStoredUser();
 
   const [preview, setPreview] = useState("");
 
@@ -21,10 +32,10 @@ const CreateFundraiser = () => {
   });
 
   const handleChange = (e) => {
-    setForm({
-      ...form,
+    setForm((currentForm) => ({
+      ...currentForm,
       [e.target.name]: e.target.value
-    });
+    }));
   };
 
   const handleImage = (e) => {
@@ -37,14 +48,20 @@ const CreateFundraiser = () => {
     reader.onloadend = () => {
       setPreview(reader.result);
 
-      setForm({
-        ...form,
+      setForm((currentForm) => ({
+        ...currentForm,
         image: reader.result
-      });
+      }));
     };
 
     reader.readAsDataURL(file);
   };
+
+  useEffect(() => {
+    const image = location?.state?.image || DEFAULT_PREVIEW_IMAGE;
+    setPreview(image);
+    setForm((f) => ({ ...f, image }));
+  }, [location?.state?.image]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -109,14 +126,24 @@ const CreateFundraiser = () => {
               onSubmit={handleSubmit}
             >
 
-              <input
-                name="title"
-                placeholder="Campaign Title"
-                value={form.title}
-                onChange={handleChange}
-                className="w-full p-4 border rounded"
-                required
-              />
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-slate-600 mb-2">Cover Image Preview</label>
+                <div className="h-40 w-full rounded overflow-hidden bg-gray-100 flex items-center justify-center mb-2">
+                  {preview ? (
+                    <img src={preview} alt="preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="text-gray-400">No image selected</div>
+                  )}
+                </div>
+                <input
+                  name="title"
+                  placeholder="Campaign Title"
+                  value={form.title}
+                  onChange={handleChange}
+                  className="w-full p-4 border rounded"
+                  required
+                />
+              </div>
 
               <select
                 name="category"
@@ -228,12 +255,10 @@ const CreateFundraiser = () => {
 
                 <img
                   src={preview}
-                  alt=""
-                  className="w-full h-full object-cover"
+                  alt="Life-saving campaign preview"
+                  className="h-full w-full object-cover"
                 />
-
               ) : (
-
                 <div className="h-full flex items-center justify-center text-gray-400">
 
                   Campaign Preview

@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   BarChart3,
   Bell,
@@ -38,6 +39,8 @@ const donors = [
   { name: "Sanjay Singh", email: "sanjay.singh@email.com", donated: "Rs 22,500", campaigns: 2, last: "May 21, 2026" },
   { name: "Lakshmi M.", email: "lakshmi@email.com", donated: "Rs 15,000", campaigns: 2, last: "May 21, 2026" },
 ];
+
+const LIFE_SAVING_IMAGE = "https://images.unsplash.com/photo-1531746790731-6c087fecd65a?auto=format&fit=crop&w=1600&q=80";
 
 const approvals = [
   { campaign: "Dialysis Fund for Deepa", by: "Deepa V.", category: "Medical", goal: "Rs 3,00,000", date: "May 21, 2026", docs: 3 },
@@ -124,10 +127,70 @@ export default function AdminDashboard() {
   const [touchedFields, setTouchedFields] = useState({});
   const [successMessage, setSuccessMessage] = useState("");
 
+  // Modal states
+  const [showEditCampaignForm, setShowEditCampaignForm] = useState(false);
+  const [showRefundForm, setShowRefundForm] = useState(false);
+  const [showDonorDetailsModal, setShowDonorDetailsModal] = useState(false);
+  const [showCampaignDetailsModal, setShowCampaignDetailsModal] = useState(false);
+
+  // Form data states
+
+  const [editCampaignForm, setEditCampaignForm] = useState({
+    name: "",
+    status: "Active",
+  });
+
+  const [refundForm, setRefundForm] = useState({
+    donationId: "",
+    reason: "",
+    processRefund: false,
+  });
+
+  const [selectedItem, setSelectedItem] = useState(null);
+  const navigate = useNavigate();
+
+  // Local editable state so actions reflect immediately in UI
+  const [campaignsState, setCampaignsState] = useState(campaigns);
+  const [donationsState, setDonationsState] = useState(donations);
+  const [donorsState] = useState(donors);
+
+  // Website settings for fundraiser site
+  const [websiteForm, setWebsiteForm] = useState({
+    heroTitle: "",
+    heroSubtitle: "",
+    featuredCount: 4,
+    enableCarousel: true,
+    footerText: "",
+    primaryColor: "#0d9488",
+  });
+
+  const validateWebsiteForm = () => {
+    const errors = {};
+    if (!websiteForm.heroTitle.trim()) errors.heroTitle = "Hero title is required";
+    if (!websiteForm.footerText.trim()) errors.footerText = "Footer text is required";
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSaveWebsite = () => {
+    if (validateWebsiteForm()) {
+      setSuccessMessage("Website settings saved successfully!");
+      setTimeout(() => setSuccessMessage(""), 3000);
+      notify("Website settings updated.", "success");
+    }
+  };
+
   // Validation functions
   const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const validatePhone = (phone) => /^[0-9]{10}$/.test(phone.replace(/\D/g, ""));
   const validatePassword = (password) => password.length >= 6;
+
+  const validateRefundForm = () => {
+    const errors = {};
+    if (!refundForm.reason.trim()) errors.reason = "Refund reason is required";
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const validateProfileForm = () => {
     const errors = {};
@@ -209,6 +272,201 @@ export default function AdminDashboard() {
     setTouchedFields({ ...touchedFields, [fieldName]: true });
   };
 
+  const handleEditCampaign = (campaign) => {
+    setSelectedItem(campaign);
+    setEditCampaignForm({ name: campaign.name, status: campaign.status });
+    setShowEditCampaignForm(true);
+  };
+
+  const handleSaveCampaignEdit = () => {
+    setCampaignsState((list) => list.map((c) => (c.name === selectedItem.name ? { ...c, name: editCampaignForm.name, status: editCampaignForm.status } : c)));
+    notify(`Campaign "${editCampaignForm.name}" updated to status: ${editCampaignForm.status}`, "success");
+    setShowEditCampaignForm(false);
+  };
+
+  const handleInitiateRefund = (donation) => {
+    setSelectedItem(donation);
+    setRefundForm({ donationId: `${donation.donor}-${donation.date}`, reason: "", processRefund: false });
+    setShowRefundForm(true);
+  };
+
+  const handleProcessRefund = () => {
+    if (validateRefundForm()) {
+      const donation = selectedItem;
+      // update donation state to reflect refund
+      setDonationsState((list) => list.map((d) => (d.donor === donation.donor && d.date === donation.date ? { ...d, status: "Refunded" } : d)));
+      notify(`Refund initiated for ${donation.donor} - Amount: ${donation.amount}. Reason: ${refundForm.reason}`, "success");
+      setShowRefundForm(false);
+      setRefundForm({ donationId: "", reason: "", processRefund: false });
+      setFormErrors({});
+    }
+  };
+
+  const handleViewCampaignDetails = (campaign) => {
+    setSelectedItem(campaign);
+    setShowCampaignDetailsModal(true);
+  };
+
+  const handleViewDonorProfile = (donor) => {
+    setSelectedItem(donor);
+    setShowDonorDetailsModal(true);
+  };
+
+  // Modal Components
+  const Modal = ({ show, title, onClose, children }) => {
+    if (!show) return null;
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
+          <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+            <h2 className="text-xl font-bold text-slate-900">{title}</h2>
+            <button onClick={onClose} className="text-2xl text-slate-400 hover:text-slate-600">×</button>
+          </div>
+          <div className="p-6">{children}</div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderRefundForm = () => (
+    <Modal show={showRefundForm} title="Process Refund" onClose={() => {
+      setShowRefundForm(false);
+      setFormErrors({});
+      setRefundForm({ donationId: "", reason: "", processRefund: false });
+    }}>
+      {selectedItem && (
+        <div className="space-y-4">
+          <div className="rounded-lg bg-slate-50 p-4">
+            <p className="text-sm text-slate-600">Donor: <span className="font-bold text-slate-900">{selectedItem.donor}</span></p>
+            <p className="text-sm text-slate-600">Amount: <span className="font-bold text-green-600">{selectedItem.amount}</span></p>
+            <p className="text-sm text-slate-600">Campaign: <span className="font-bold text-slate-900">{selectedItem.campaign}</span></p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-slate-600">Refund Reason</label>
+            <textarea
+              value={refundForm.reason}
+              onChange={(e) => setRefundForm({ ...refundForm, reason: e.target.value })}
+              onBlur={() => handleFieldBlur("reason")}
+              className={`mt-2 w-full rounded-md border px-3 py-2 outline-none transition-colors focus:border-teal-600 ${formErrors.reason && touchedFields.reason ? "border-red-500 bg-red-50" : "border-slate-200"}`}
+              placeholder="Explain why this refund is being processed"
+              rows="3"
+            />
+            {formErrors.reason && touchedFields.reason && <span className="mt-1 block text-xs text-red-600">{formErrors.reason}</span>}
+          </div>
+
+          <label className="flex items-center gap-2 rounded-md border border-slate-200 p-3">
+            <input
+              type="checkbox"
+              checked={refundForm.processRefund}
+              onChange={(e) => setRefundForm({ ...refundForm, processRefund: e.target.checked })}
+              className="rounded"
+            />
+            <span className="text-sm font-bold text-slate-700">I confirm this refund should be processed</span>
+          </label>
+
+          <div className="flex gap-3 border-t border-slate-200 pt-4">
+            <button onClick={() => {
+              setShowRefundForm(false);
+              setFormErrors({});
+              setRefundForm({ donationId: "", reason: "", processRefund: false });
+            }} className="flex-1 rounded-md border border-slate-300 px-4 py-2 font-bold text-slate-700 hover:bg-slate-50 transition-colors">
+              Cancel
+            </button>
+            <button onClick={handleProcessRefund} disabled={!refundForm.processRefund} className="flex-1 rounded-md bg-rose-600 px-4 py-2 font-bold text-white hover:bg-rose-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors">
+              Process Refund
+            </button>
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+
+  const renderCampaignDetailsModal = () => (
+    <Modal show={showCampaignDetailsModal} title="Campaign Details" onClose={() => setShowCampaignDetailsModal(false)}>
+      {selectedItem && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs font-bold text-slate-500">Campaign Name</p>
+              <p className="text-sm font-bold text-slate-900">{selectedItem.name}</p>
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-500">Organiser</p>
+              <p className="text-sm font-bold text-slate-900">{selectedItem.organiser}</p>
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-500">Category</p>
+              <p className="text-sm font-bold text-slate-900">{selectedItem.category}</p>
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-500">Status</p>
+              <StatusPill status={selectedItem.status} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-500">Amount Raised</p>
+              <p className="text-sm font-bold text-green-600">{selectedItem.raised}</p>
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-500">Goal</p>
+              <p className="text-sm font-bold text-slate-900">{selectedItem.goal}</p>
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-500">Progress</p>
+              <Progress value={selectedItem.progress} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-500">Deadline</p>
+              <p className="text-sm font-bold text-slate-900">{selectedItem.deadline}</p>
+            </div>
+          </div>
+          <button onClick={() => setShowCampaignDetailsModal(false)} className="w-full rounded-md bg-teal-700 px-4 py-2 font-bold text-white hover:bg-teal-800 transition-colors">
+            Close
+          </button>
+        </div>
+      )}
+    </Modal>
+  );
+
+  const renderDonorDetailsModal = () => (
+    <Modal show={showDonorDetailsModal} title="Donor Profile" onClose={() => setShowDonorDetailsModal(false)}>
+      {selectedItem && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs font-bold text-slate-500">Donor Name</p>
+              <p className="text-sm font-bold text-slate-900">{selectedItem.name}</p>
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-500">Email</p>
+              <p className="text-sm text-slate-700">{selectedItem.email}</p>
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-500">Total Donated</p>
+              <p className="text-sm font-bold text-green-600">{selectedItem.donated}</p>
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-500">Campaigns Supported</p>
+              <p className="text-sm font-bold text-slate-900">{selectedItem.campaigns}</p>
+            </div>
+            <div className="col-span-2">
+              <p className="text-xs font-bold text-slate-500">Last Donation</p>
+              <p className="text-sm text-slate-700">{selectedItem.last}</p>
+            </div>
+          </div>
+          <div className="flex gap-3 border-t border-slate-200 pt-4">
+            <button onClick={() => notify(`Sending message to ${selectedItem.name}...`)} className="flex-1 rounded-md bg-blue-600 px-4 py-2 font-bold text-white hover:bg-blue-700 transition-colors">
+              Send Message
+            </button>
+            <button onClick={() => setShowDonorDetailsModal(false)} className="flex-1 rounded-md border border-slate-300 px-4 py-2 font-bold text-slate-700 hover:bg-slate-50 transition-colors">
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+
   const renderDashboard = () => (
     <>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -252,21 +510,22 @@ export default function AdminDashboard() {
           </div>
         </section>
 
-        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="rounded-lg border border-slate-200 bg-transparent p-5 shadow-sm">
           <h2 className="mb-4 font-bold text-slate-900">Live Donations</h2>
-          <div className="space-y-4">
-            {donations.slice(0, 5).map((item) => (
-              <div key={`${item.donor}-${item.date}`} className="flex items-center justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-teal-50 text-xs font-bold text-teal-700">
-                    {item.donor.split(" ").map((part) => part[0]).slice(0, 2).join("")}
-                  </div>
+          <div className="flex flex-col gap-3 max-h-96 overflow-y-auto pr-2">
+            {donationsState.slice(0, 12).map((item, idx) => (
+              <div key={`${item.donor}-${item.date}-${idx}`} className="floating-donor rounded-lg bg-white/70 backdrop-blur-sm p-3 shadow-sm border border-white/30 transition-transform hover:translate-y-0">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-400 to-teal-700 text-white font-bold">{item.donor.split(' ').map(p=>p[0]).slice(0,2).join('')}</div>
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-slate-800">{item.donor}</p>
-                    <p className="truncate text-xs text-slate-500">{item.date.split(" - ")[1]}</p>
+                    <p className="truncate text-sm font-bold text-slate-900">{item.donor}</p>
+                    <p className="truncate text-xs text-slate-500">{item.campaign}</p>
+                  </div>
+                  <div className="ml-auto text-right">
+                    <p className="text-sm font-bold text-green-600">{item.amount}</p>
+                    <p className="text-xs text-slate-400">{item.date.split(' - ')[1]}</p>
                   </div>
                 </div>
-                <p className="text-sm font-bold text-green-600">{item.amount}</p>
               </div>
             ))}
           </div>
@@ -285,18 +544,57 @@ export default function AdminDashboard() {
       <Toolbar placeholder="Search campaigns...">
         <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>All Categories</option></select>
         <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>All Status</option></select>
-        <button onClick={() => notify("New campaign form will open here.")} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white hover:bg-teal-800 transition-colors">+ New Campaign</button>
+        <button onClick={() => navigate('/create-fundraiser', { state: { image: LIFE_SAVING_IMAGE } })} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white hover:bg-teal-800 transition-colors hover:shadow-lg">+ New Campaign</button>
       </Toolbar>
       <TableShell>
         <thead className="bg-slate-50 text-xs uppercase text-slate-500">
           <tr><th className="px-4 py-3">Campaign</th><th>Organiser</th><th>Category</th><th>Raised</th><th>Goal</th><th>Progress</th><th>Status</th><th>Deadline</th><th>Actions</th></tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {campaigns.map((item) => (
-            <tr key={item.name}><td className="px-4 py-4 font-bold">{item.name}</td><td>{item.organiser}</td><td>{item.category}</td><td>{item.raised}</td><td>{item.goal}</td><td><Progress value={item.progress} /></td><td><StatusPill status={item.status} /></td><td>{item.deadline}</td><td className="px-4 py-4"><div className="flex gap-2"><button onClick={() => notify(`Viewing details for ${item.name}`)} className="text-xs font-bold text-teal-700 hover:text-teal-800">View</button><button onClick={() => notify(`Editing ${item.name}`)} className="text-xs font-bold text-blue-600 hover:text-blue-700">Edit</button><button onClick={() => notify(`Pausing ${item.name}`)} className="text-xs font-bold text-amber-600 hover:text-amber-700">Pause</button></div></td></tr>
+          {campaignsState.map((item) => (
+            <tr key={item.name} className="transition-colors hover:bg-slate-50 cursor-pointer">
+              <td className="px-4 py-4 font-bold">{item.name}</td>
+              <td>{item.organiser}</td>
+              <td>{item.category}</td>
+              <td>{item.raised}</td>
+              <td>{item.goal}</td>
+              <td><Progress value={item.progress} /></td>
+              <td><StatusPill status={item.status} /></td>
+              <td>{item.deadline}</td>
+              <td className="px-4 py-4">
+                <div className="flex gap-2 flex-wrap">
+                  <button onClick={() => handleViewCampaignDetails(item)} className="text-xs font-bold text-teal-700 hover:text-teal-800 transition-colors">View</button>
+                  <button onClick={() => handleEditCampaign(item)} className="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors">Edit</button>
+                  <button onClick={() => { setCampaignsState((list) => list.map((c) => c.name === item.name ? { ...c, status: c.status === 'Paused' ? 'Active' : 'Paused' } : c)); notify(`Campaign ${item.name} status toggled`); }} className="text-xs font-bold text-amber-600 hover:text-amber-700 transition-colors">Pause</button>
+                </div>
+              </td>
+            </tr>
           ))}
         </tbody>
       </TableShell>
+      <Modal show={showEditCampaignForm} title="Edit Campaign" onClose={() => setShowEditCampaignForm(false)}>
+        {selectedItem && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-bold text-slate-600">Campaign Name</label>
+              <input value={editCampaignForm.name} onChange={(e) => setEditCampaignForm({ ...editCampaignForm, name: e.target.value })} className="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 outline-none focus:border-teal-600" />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-slate-600">Status</label>
+              <select value={editCampaignForm.status} onChange={(e) => setEditCampaignForm({ ...editCampaignForm, status: e.target.value })} className="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 outline-none focus:border-teal-600">
+                <option value="Active">Active</option>
+                <option value="Paused">Paused</option>
+                <option value="Urgent">Urgent</option>
+                <option value="Completed">Completed</option>
+              </select>
+            </div>
+            <div className="flex gap-3 border-t border-slate-200 pt-4">
+              <button onClick={() => setShowEditCampaignForm(false)} className="flex-1 rounded-md border border-slate-300 px-4 py-2 font-bold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
+              <button onClick={handleSaveCampaignEdit} className="flex-1 rounded-md bg-teal-700 px-4 py-2 font-bold text-white hover:bg-teal-800 transition-colors">Save Changes</button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </section>
   );
 
@@ -305,18 +603,19 @@ export default function AdminDashboard() {
       <Toolbar placeholder="Search donations...">
         <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>All Campaigns</option></select>
         <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>All Methods</option></select>
-        <button onClick={() => downloadCsv("donations.csv", donations)} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white hover:bg-teal-800 transition-colors">Export</button>
+        <button onClick={() => downloadCsv("donations.csv", donationsState)} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white hover:bg-teal-800 transition-colors">Export</button>
       </Toolbar>
       <TableShell>
         <thead className="bg-slate-50 text-xs uppercase text-slate-500">
           <tr><th className="px-4 py-3">Donor</th><th>Campaign</th><th>Amount</th><th>Method</th><th>Date & Time</th><th>Status</th><th>Actions</th></tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {donations.map((item) => (
-            <tr key={`${item.donor}-${item.date}`}><td className="px-4 py-4 font-bold">{item.donor}</td><td>{item.campaign}</td><td>{item.amount}</td><td>{item.method}</td><td>{item.date}</td><td><StatusPill status={item.status} /></td><td className="px-4 py-4"><div className="flex gap-2"><button onClick={() => notify(`Viewing donation from ${item.donor}`)} className="text-xs font-bold text-teal-700 hover:text-teal-800">View</button>{item.status === "Success" && <button onClick={() => notify(`Initiating refund for ${item.donor}`)} className="text-xs font-bold text-rose-600 hover:text-rose-700">Refund</button>}</div></td></tr>
+          {donationsState.map((item) => (
+            <tr key={`${item.donor}-${item.date}`}><td className="px-4 py-4 font-bold">{item.donor}</td><td>{item.campaign}</td><td>{item.amount}</td><td>{item.method}</td><td>{item.date}</td><td><StatusPill status={item.status} /></td><td className="px-4 py-4"><div className="flex gap-2"><button onClick={() => notify(`Viewing donation from ${item.donor}`)} className="text-xs font-bold text-teal-700 hover:text-teal-800">View</button>{item.status === "Success" && <button onClick={() => handleInitiateRefund(item)} className="text-xs font-bold text-rose-600 hover:text-rose-700">Refund</button>}</div></td></tr>
           ))}
         </tbody>
       </TableShell>
+      {renderRefundForm()}
     </section>
   );
 
@@ -324,18 +623,19 @@ export default function AdminDashboard() {
     <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <Toolbar placeholder="Search donors...">
         <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>All Donor Types</option></select>
-        <button onClick={() => downloadCsv("donors.csv", donors)} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white hover:bg-teal-800 transition-colors">Export</button>
+        <button onClick={() => downloadCsv("donors.csv", donorsState)} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white hover:bg-teal-800 transition-colors">Export</button>
       </Toolbar>
       <TableShell>
         <thead className="bg-slate-50 text-xs uppercase text-slate-500">
           <tr><th className="px-4 py-3">Donor</th><th>Email</th><th>Total Donated</th><th>Campaigns Supported</th><th>Last Donation</th><th>Actions</th></tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {donors.map((item) => (
-            <tr key={item.email}><td className="px-4 py-4 font-bold">{item.name}</td><td>{item.email}</td><td>{item.donated}</td><td>{item.campaigns}</td><td>{item.last}</td><td className="px-4 py-4"><div className="flex gap-2"><button onClick={() => notify(`Viewing profile for ${item.name}`)} className="text-xs font-bold text-teal-700 hover:text-teal-800">Profile</button><button onClick={() => notify(`Contacting ${item.name}`)} className="text-xs font-bold text-blue-600 hover:text-blue-700">Message</button><button onClick={() => downloadCsv(`${item.name}_report.csv`, [item])} className="text-xs font-bold text-green-600 hover:text-green-700">Report</button></div></td></tr>
+          {donorsState.map((item) => (
+            <tr key={item.email}><td className="px-4 py-4 font-bold">{item.name}</td><td>{item.email}</td><td>{item.donated}</td><td>{item.campaigns}</td><td>{item.last}</td><td className="px-4 py-4"><div className="flex gap-2"><button onClick={() => handleViewDonorProfile(item)} className="text-xs font-bold text-teal-700 hover:text-teal-800">Profile</button><button onClick={() => notify(`Composing message to ${item.name}...`)} className="text-xs font-bold text-blue-600 hover:text-blue-700">Message</button><button onClick={() => downloadCsv(`${item.name}_report.csv`, [item])} className="text-xs font-bold text-green-600 hover:text-green-700">Report</button></div></td></tr>
           ))}
         </tbody>
       </TableShell>
+      {renderDonorDetailsModal()}
     </section>
   );
 
@@ -368,7 +668,7 @@ export default function AdminDashboard() {
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="mb-5 font-bold text-slate-900">Recent Donations</h2>
         <div className="space-y-4">
-          {donations.slice(0, 3).map((item) => (
+          {donationsState.slice(0, 3).map((item) => (
             <div key={`${item.donor}-${item.amount}`} className="flex items-center justify-between rounded-md bg-slate-50 p-3">
               <div><p className="font-bold text-slate-800">{item.donor}</p><p className="text-xs text-slate-500">{item.campaign} - {item.date}</p></div>
               <p className="font-bold text-green-600">{item.amount}</p>
@@ -467,7 +767,7 @@ export default function AdminDashboard() {
         </div>
       )}
       <div className="mb-6 flex gap-6 border-b border-slate-200 text-sm font-bold text-slate-600">
-        {["Profile", "Platform Settings", "Security", "Notifications", "Payment Settings"].map((tab) => (
+        {["Profile", "Website", "Security", "Notifications", "Payment Settings"].map((tab) => (
           <button onClick={() => { setSettingsTab(tab); setFormErrors({}); setTouchedFields({}); }} key={tab} className={`pb-3 transition-all ${settingsTab === tab ? "border-b-2 border-teal-700 text-teal-700" : "hover:text-slate-800"}`}>
             {tab}
           </button>
@@ -500,6 +800,56 @@ export default function AdminDashboard() {
               );
             })}
             <button onClick={handleSaveProfile} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white hover:bg-teal-800 transition-colors">Save Changes</button>
+          </div>
+        )}
+        {settingsTab === "Website" && (
+          <div className="col-span-2">
+            <h2 className="mb-5 font-bold">Website Settings</h2>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm font-bold text-slate-600">Hero Title</label>
+                <input value={websiteForm.heroTitle} onChange={(e) => setWebsiteForm({ ...websiteForm, heroTitle: e.target.value })} className="mb-4 w-full rounded-md border border-slate-200 px-3 py-2 outline-none focus:border-teal-600" placeholder="Bring hope to those in need" />
+
+                <label className="mb-2 block text-sm font-bold text-slate-600">Hero Subtitle</label>
+                <input value={websiteForm.heroSubtitle} onChange={(e) => setWebsiteForm({ ...websiteForm, heroSubtitle: e.target.value })} className="mb-4 w-full rounded-md border border-slate-200 px-3 py-2 outline-none focus:border-teal-600" placeholder="Create a campaign and help today" />
+
+                <label className="mb-2 block text-sm font-bold text-slate-600">Featured Campaigns</label>
+                <input type="number" value={websiteForm.featuredCount} onChange={(e) => setWebsiteForm({ ...websiteForm, featuredCount: Number(e.target.value) })} className="mb-4 w-32 rounded-md border border-slate-200 px-3 py-2 outline-none focus:border-teal-600" />
+
+                <label className="mb-2 block text-sm font-bold text-slate-600">Primary Color</label>
+                <input type="color" value={websiteForm.primaryColor} onChange={(e) => setWebsiteForm({ ...websiteForm, primaryColor: e.target.value })} className="mb-4 h-10 w-20 rounded-md border border-slate-200 p-1" />
+
+                <label className="flex items-center gap-3">
+                  <input type="checkbox" checked={websiteForm.enableCarousel} onChange={(e) => setWebsiteForm({ ...websiteForm, enableCarousel: e.target.checked })} className="rounded" />
+                  <span className="font-bold text-slate-700">Enable featured carousel on homepage</span>
+                </label>
+
+                <div className="mt-4">
+                  <label className="mb-2 block text-sm font-bold text-slate-600">Footer Text</label>
+                  <input value={websiteForm.footerText} onChange={(e) => setWebsiteForm({ ...websiteForm, footerText: e.target.value })} className="mb-4 w-full rounded-md border border-slate-200 px-3 py-2 outline-none focus:border-teal-600" placeholder="© 2026 MyFundraiser. All rights reserved." />
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button onClick={handleSaveWebsite} className="rounded-md bg-teal-700 px-4 py-2 font-bold text-white hover:bg-teal-800">Save Website</button>
+                  <button onClick={() => { setWebsiteForm({ heroTitle: '', heroSubtitle: '', featuredCount: 4, enableCarousel: true, footerText: '', primaryColor: '#0d9488' }); setFormErrors({}); }} className="rounded-md border border-slate-300 px-4 py-2 font-bold text-slate-700 hover:bg-slate-50">Reset</button>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="mb-3 text-sm font-bold text-slate-700">Live Preview</h3>
+                <div className="rounded-md border border-slate-200 p-4">
+                  <div className="mb-4 rounded-md p-6" style={{ background: `linear-gradient(90deg, ${websiteForm.primaryColor}22, ${websiteForm.primaryColor}11)` }}>
+                    <h2 className="text-lg font-bold" style={{ color: websiteForm.primaryColor }}>{websiteForm.heroTitle || 'Hero Title'}</h2>
+                    <p className="text-sm text-slate-600">{websiteForm.heroSubtitle || 'Hero subtitle goes here'}</p>
+                  </div>
+                  <div className="mb-3">
+                    <p className="text-xs text-slate-500">Featured campaigns shown: <b className="text-slate-900">{websiteForm.featuredCount}</b></p>
+                    <p className="text-xs text-slate-500">Carousel: <b className="text-slate-900">{websiteForm.enableCarousel ? 'Enabled' : 'Disabled'}</b></p>
+                  </div>
+                  <div className="mt-3 rounded-t-md border-t pt-3 text-xs text-slate-500">Footer preview: {websiteForm.footerText || '© 2026 MyFundraiser. All rights reserved.'}</div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
         {settingsTab === "Profile" && (
@@ -592,7 +942,54 @@ export default function AdminDashboard() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-h-screen bg-slate-50 admin-page">
+      <style>{`
+        .admin-page input, .admin-page select, .admin-page textarea, .admin-page .toolbar-input {
+          box-shadow: 0 8px 20px rgba(2,6,23,0.08);
+          transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease, background-color .18s ease;
+          border-radius: .5rem;
+        }
+        .admin-page input:hover, .admin-page select:hover, .admin-page textarea:hover {
+          border-color: #0f766e;
+          box-shadow: 0 14px 30px rgba(15,118,110,0.16);
+          transform: translateY(-2px);
+        }
+        .admin-page input:focus, .admin-page select:focus, .admin-page textarea:focus{
+          box-shadow: 0 14px 30px rgba(2,6,23,0.12);
+          transform: translateY(-4px);
+        }
+        .admin-page button,
+        .admin-page select,
+        .admin-page input[type="checkbox"],
+        .admin-page input[type="color"],
+        .admin-page input[type="file"],
+        .admin-page tbody tr {
+          cursor: pointer;
+        }
+        .admin-page input:not([type="checkbox"]):not([type="color"]):not([type="file"]),
+        .admin-page textarea {
+          cursor: text;
+        }
+        .admin-page button:disabled {
+          cursor: not-allowed;
+        }
+        .admin-page button {
+          transition: background-color .18s ease, border-color .18s ease, box-shadow .18s ease, color .18s ease, transform .18s ease;
+        }
+        .admin-page button:not(:disabled):hover {
+          box-shadow: 0 10px 22px rgba(2,6,23,0.12);
+          transform: translateY(-1px);
+        }
+        .admin-page tbody tr {
+          transition: background-color .18s ease, box-shadow .18s ease, transform .18s ease;
+        }
+        .admin-page tbody tr:hover {
+          background: #f8fafc;
+          box-shadow: inset 3px 0 0 #0f766e;
+        }
+        .floating-donor { animation: floatY 6s ease-in-out infinite; }
+        @keyframes floatY { 0%{transform:translateY(0)} 50%{transform:translateY(-8px)} 100%{transform:translateY(0)} }
+      `}</style>
       <div className="flex min-h-screen">
         <aside className="hidden w-64 shrink-0 bg-slate-950 text-white lg:flex lg:flex-col">
           <div className="flex h-16 items-center gap-2 border-b border-white/10 px-5">
@@ -650,6 +1047,7 @@ export default function AdminDashboard() {
           </div>
         </section>
       </div>
+      {renderCampaignDetailsModal()}
     </main>
   );
 }
