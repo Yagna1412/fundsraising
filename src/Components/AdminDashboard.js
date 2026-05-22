@@ -116,6 +116,40 @@ export default function AdminDashboard() {
   const [messageDraft, setMessageDraft] = useState("");
   const [sentMessages, setSentMessages] = useState([]);
   const [settingsTab, setSettingsTab] = useState("Profile");
+  
+  // Form state for settings
+  const [profileForm, setProfileForm] = useState({ fullName: "", email: "", phone: "" });
+  const [passwordForm, setPasswordForm] = useState({ current: "", new: "", confirm: "" });
+  const [formErrors, setFormErrors] = useState({});
+  const [touchedFields, setTouchedFields] = useState({});
+  const [successMessage, setSuccessMessage] = useState("");
+
+  // Validation functions
+  const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const validatePhone = (phone) => /^[0-9]{10}$/.test(phone.replace(/\D/g, ""));
+  const validatePassword = (password) => password.length >= 6;
+
+  const validateProfileForm = () => {
+    const errors = {};
+    if (!profileForm.fullName.trim()) errors.fullName = "Full name is required";
+    if (!profileForm.email.trim()) errors.email = "Email is required";
+    else if (!validateEmail(profileForm.email)) errors.email = "Invalid email format";
+    if (!profileForm.phone.trim()) errors.phone = "Phone number is required";
+    else if (!validatePhone(profileForm.phone)) errors.phone = "Invalid phone number (10 digits required)";
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const validatePasswordForm = () => {
+    const errors = {};
+    if (!passwordForm.current.trim()) errors.current = "Current password is required";
+    if (!passwordForm.new.trim()) errors.new = "New password is required";
+    else if (!validatePassword(passwordForm.new)) errors.new = "Password must be at least 6 characters";
+    if (!passwordForm.confirm.trim()) errors.confirm = "Confirm password is required";
+    else if (passwordForm.new !== passwordForm.confirm) errors.confirm = "Passwords do not match";
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const title = useMemo(() => navItems.find((item) => item.key === activeView)?.label || "Dashboard", [activeView]);
 
@@ -140,17 +174,39 @@ export default function AdminDashboard() {
 
   const handleApproval = (campaign, action) => {
     setApprovalItems((items) => items.filter((item) => item.campaign !== campaign));
-    notify(`${campaign} ${action}.`);
+    notify(`Campaign ${action === "approve" ? "approved" : "rejected"}: ${campaign}`, "success");
   };
 
   const handleSendMessage = () => {
     if (!messageDraft.trim()) {
-      notify("Please type a message before sending.");
+      notify("Message cannot be empty");
       return;
     }
     setSentMessages((messages) => [...messages, { to: selectedConversation.name, text: messageDraft.trim() }]);
     setMessageDraft("");
-    notify("Message sent.");
+    notify("Message sent successfully", "success");
+  };
+
+  const handleSaveProfile = () => {
+    if (validateProfileForm()) {
+      setSuccessMessage("Profile updated successfully!");
+      setTimeout(() => setSuccessMessage(""), 3000);
+      notify("Profile changes saved.", "success");
+    }
+  };
+
+  const handleUpdatePassword = () => {
+    if (validatePasswordForm()) {
+      setPasswordForm({ current: "", new: "", confirm: "" });
+      setFormErrors({});
+      setSuccessMessage("Password updated successfully!");
+      setTimeout(() => setSuccessMessage(""), 3000);
+      notify("Password updated.", "success");
+    }
+  };
+
+  const handleFieldBlur = (fieldName) => {
+    setTouchedFields({ ...touchedFields, [fieldName]: true });
   };
 
   const renderDashboard = () => (
@@ -229,7 +285,7 @@ export default function AdminDashboard() {
       <Toolbar placeholder="Search campaigns...">
         <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>All Categories</option></select>
         <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>All Status</option></select>
-        <button onClick={() => notify("New campaign form will open here.")} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white">+ New Campaign</button>
+        <button onClick={() => notify("New campaign form will open here.")} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white hover:bg-teal-800 transition-colors">+ New Campaign</button>
       </Toolbar>
       <TableShell>
         <thead className="bg-slate-50 text-xs uppercase text-slate-500">
@@ -237,7 +293,7 @@ export default function AdminDashboard() {
         </thead>
         <tbody className="divide-y divide-slate-100">
           {campaigns.map((item) => (
-            <tr key={item.name}><td className="px-4 py-4 font-bold">{item.name}</td><td>{item.organiser}</td><td>{item.category}</td><td>{item.raised}</td><td>{item.goal}</td><td><Progress value={item.progress} /></td><td><StatusPill status={item.status} /></td><td>{item.deadline}</td><td><button onClick={() => notify(`Viewing ${item.name}`)} className="font-bold">...</button></td></tr>
+            <tr key={item.name}><td className="px-4 py-4 font-bold">{item.name}</td><td>{item.organiser}</td><td>{item.category}</td><td>{item.raised}</td><td>{item.goal}</td><td><Progress value={item.progress} /></td><td><StatusPill status={item.status} /></td><td>{item.deadline}</td><td className="px-4 py-4"><div className="flex gap-2"><button onClick={() => notify(`Viewing details for ${item.name}`)} className="text-xs font-bold text-teal-700 hover:text-teal-800">View</button><button onClick={() => notify(`Editing ${item.name}`)} className="text-xs font-bold text-blue-600 hover:text-blue-700">Edit</button><button onClick={() => notify(`Pausing ${item.name}`)} className="text-xs font-bold text-amber-600 hover:text-amber-700">Pause</button></div></td></tr>
           ))}
         </tbody>
       </TableShell>
@@ -249,7 +305,7 @@ export default function AdminDashboard() {
       <Toolbar placeholder="Search donations...">
         <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>All Campaigns</option></select>
         <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>All Methods</option></select>
-        <button onClick={() => downloadCsv("donations.csv", donations)} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white">Export</button>
+        <button onClick={() => downloadCsv("donations.csv", donations)} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white hover:bg-teal-800 transition-colors">Export</button>
       </Toolbar>
       <TableShell>
         <thead className="bg-slate-50 text-xs uppercase text-slate-500">
@@ -257,7 +313,7 @@ export default function AdminDashboard() {
         </thead>
         <tbody className="divide-y divide-slate-100">
           {donations.map((item) => (
-            <tr key={`${item.donor}-${item.date}`}><td className="px-4 py-4 font-bold">{item.donor}</td><td>{item.campaign}</td><td>{item.amount}</td><td>{item.method}</td><td>{item.date}</td><td><StatusPill status={item.status} /></td><td><button onClick={() => notify(`Viewing donation from ${item.donor}`)} className="font-bold">...</button></td></tr>
+            <tr key={`${item.donor}-${item.date}`}><td className="px-4 py-4 font-bold">{item.donor}</td><td>{item.campaign}</td><td>{item.amount}</td><td>{item.method}</td><td>{item.date}</td><td><StatusPill status={item.status} /></td><td className="px-4 py-4"><div className="flex gap-2"><button onClick={() => notify(`Viewing donation from ${item.donor}`)} className="text-xs font-bold text-teal-700 hover:text-teal-800">View</button>{item.status === "Success" && <button onClick={() => notify(`Initiating refund for ${item.donor}`)} className="text-xs font-bold text-rose-600 hover:text-rose-700">Refund</button>}</div></td></tr>
           ))}
         </tbody>
       </TableShell>
@@ -268,7 +324,7 @@ export default function AdminDashboard() {
     <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <Toolbar placeholder="Search donors...">
         <select className="rounded-md border border-slate-200 px-3 py-2 text-sm"><option>All Donor Types</option></select>
-        <button onClick={() => downloadCsv("donors.csv", donors)} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white">Export</button>
+        <button onClick={() => downloadCsv("donors.csv", donors)} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white hover:bg-teal-800 transition-colors">Export</button>
       </Toolbar>
       <TableShell>
         <thead className="bg-slate-50 text-xs uppercase text-slate-500">
@@ -276,7 +332,7 @@ export default function AdminDashboard() {
         </thead>
         <tbody className="divide-y divide-slate-100">
           {donors.map((item) => (
-            <tr key={item.email}><td className="px-4 py-4 font-bold">{item.name}</td><td>{item.email}</td><td>{item.donated}</td><td>{item.campaigns}</td><td>{item.last}</td><td><button onClick={() => notify(`Viewing donor ${item.name}`)} className="font-bold">...</button></td></tr>
+            <tr key={item.email}><td className="px-4 py-4 font-bold">{item.name}</td><td>{item.email}</td><td>{item.donated}</td><td>{item.campaigns}</td><td>{item.last}</td><td className="px-4 py-4"><div className="flex gap-2"><button onClick={() => notify(`Viewing profile for ${item.name}`)} className="text-xs font-bold text-teal-700 hover:text-teal-800">Profile</button><button onClick={() => notify(`Contacting ${item.name}`)} className="text-xs font-bold text-blue-600 hover:text-blue-700">Message</button><button onClick={() => downloadCsv(`${item.name}_report.csv`, [item])} className="text-xs font-bold text-green-600 hover:text-green-700">Report</button></div></td></tr>
           ))}
         </tbody>
       </TableShell>
@@ -288,7 +344,7 @@ export default function AdminDashboard() {
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="font-bold text-slate-900">Pending Approvals</h2>
-          {compact && <button onClick={() => setActiveView("approvals")} className="text-sm font-bold text-teal-700">View all</button>}
+          {compact && <button onClick={() => setActiveView("approvals")} className="text-sm font-bold text-teal-700 hover:text-teal-800">View all</button>}
         </div>
         <TableShell>
           <thead className="bg-slate-50 text-xs uppercase text-slate-500">
@@ -296,7 +352,7 @@ export default function AdminDashboard() {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {approvalItems.map((item) => (
-              <tr key={item.campaign}><td className="px-4 py-4 font-bold">{item.campaign}</td><td>{item.by}</td><td>{item.category}</td><td>{item.goal}</td><td>{item.docs}</td><td><button onClick={() => handleApproval(item.campaign, "approved")} className="mr-2 rounded bg-teal-700 px-3 py-1 text-xs font-bold text-white">Approve</button><button onClick={() => handleApproval(item.campaign, "rejected")} className="rounded bg-red-50 px-3 py-1 text-xs font-bold text-red-600">Reject</button></td></tr>
+              <tr key={item.campaign}><td className="px-4 py-4 font-bold">{item.campaign}</td><td>{item.by}</td><td>{item.category}</td><td>{item.goal}</td><td><span className="inline-block rounded-full bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700">{item.docs} files</span></td><td className="px-4 py-4"><div className="flex flex-wrap gap-2"><button onClick={() => notify(`Viewing documents for ${item.campaign}`)} className="rounded bg-blue-50 px-3 py-1 text-xs font-bold text-blue-600 hover:bg-blue-100">Docs</button><button onClick={() => notify(`Requesting additional info from ${item.by}`)} className="rounded bg-amber-50 px-3 py-1 text-xs font-bold text-amber-600 hover:bg-amber-100">Request Info</button><button onClick={() => handleApproval(item.campaign, "approve")} className="rounded bg-teal-700 px-3 py-1 text-xs font-bold text-white hover:bg-teal-800">✓ Approve</button><button onClick={() => handleApproval(item.campaign, "reject")} className="rounded bg-red-50 px-3 py-1 text-xs font-bold text-red-600 hover:bg-red-100">✕ Reject</button></div></td></tr>
             ))}
             {approvalItems.length === 0 && (
               <tr><td className="px-4 py-6 text-center text-slate-500" colSpan="6">No pending approvals.</td></tr>
@@ -355,8 +411,19 @@ export default function AdminDashboard() {
               ))}
             </div>
           </div>
+          <div className="mt-5 flex gap-2">
+            <button onClick={() => downloadCsv("revenue_report.csv", [{ month: "May", revenue: "Rs 12,45,000" }])} className="flex-1 rounded-md bg-teal-700 px-3 py-2 text-xs font-bold text-white hover:bg-teal-800 transition-colors">Export Report</button>
+            <button onClick={() => notify("Scheduling report email...")} className="flex-1 rounded-md bg-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-300 transition-colors">Schedule Email</button>
+          </div>
         </section>
-        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"><h2 className="mb-5 font-bold">Donations by Category</h2><div className="mx-auto flex h-44 w-44 items-center justify-center rounded-full border-[28px] border-teal-600 text-center font-bold">820<br />Total</div></section>
+        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-5 font-bold">Donations by Category</h2>
+          <div className="mx-auto flex h-44 w-44 items-center justify-center rounded-full border-[28px] border-teal-600 text-center font-bold">820<br /><span className="text-xs">Total</span></div>
+          <div className="mt-5 flex gap-2">
+            <button onClick={() => notify("Generating detailed category report...")} className="flex-1 rounded-md bg-teal-700 px-3 py-2 text-xs font-bold text-white hover:bg-teal-800 transition-colors">View Details</button>
+            <button onClick={() => notify("Filtering categories...")} className="flex-1 rounded-md bg-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-300 transition-colors">Filter</button>
+          </div>
+        </section>
       </div>
     </>
   );
@@ -366,7 +433,7 @@ export default function AdminDashboard() {
       <aside className="border-r border-slate-200">
         <h2 className="border-b border-slate-200 p-5 font-bold">Conversations</h2>
         {conversations.map((item) => (
-          <button onClick={() => setSelectedConversation(item)} key={item.name} className={`flex w-full gap-3 border-b border-slate-100 p-4 text-left ${selectedConversation.name === item.name ? "bg-teal-50" : "hover:bg-slate-50"}`}>
+          <button onClick={() => setSelectedConversation(item)} key={item.name} className={`flex w-full gap-3 border-b border-slate-100 p-4 text-left transition-colors ${selectedConversation.name === item.name ? "bg-teal-50" : "hover:bg-slate-50"}`}>
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-100 font-bold text-teal-700">{item.name[0]}</div>
             <span><b className="block text-sm">{item.name}</b><span className="text-xs text-slate-500">{item.subject}</span></span>
           </button>
@@ -374,36 +441,141 @@ export default function AdminDashboard() {
       </aside>
       <div className="flex flex-col">
         <header className="border-b border-slate-200 p-5 font-bold">{selectedConversation.name} - {selectedConversation.subject}</header>
-        <div className="flex-1 space-y-4 bg-slate-50 p-6">
+        <div className="flex-1 space-y-4 bg-slate-50 p-6 overflow-y-auto">
           <p className="max-w-md rounded-lg bg-white p-3 text-sm shadow-sm">Hello Admin, I have uploaded all required documents. Please review my campaign.</p>
-          <p className="ml-auto max-w-md rounded-lg bg-teal-50 p-3 text-sm text-teal-900 shadow-sm">Hello Meena, we are reviewing your documents. You will get an update soon.</p>
+          <p className="ml-auto max-w-md rounded-lg bg-teal-50 p-3 text-sm text-teal-900 shadow-sm">Hello, we are reviewing your documents. You will get an update soon.</p>
           {sentMessages.filter((message) => message.to === selectedConversation.name).map((message, index) => (
             <p key={`${message.to}-${index}`} className="ml-auto max-w-md rounded-lg bg-teal-700 p-3 text-sm text-white shadow-sm">{message.text}</p>
           ))}
         </div>
-        <footer className="flex gap-3 border-t border-slate-200 p-4"><input value={messageDraft} onChange={(event) => setMessageDraft(event.target.value)} className="flex-1 rounded-md border border-slate-200 px-3 py-2 text-sm" placeholder="Type a message..." /><button onClick={handleSendMessage} className="rounded-md bg-teal-700 px-4 py-2 text-white">Send</button></footer>
+        <footer className="flex flex-col gap-2 border-t border-slate-200 p-4">
+          <div className="flex gap-3">
+            <input value={messageDraft} onChange={(event) => setMessageDraft(event.target.value)} onKeyPress={(e) => e.key === "Enter" && handleSendMessage()} className="flex-1 rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-teal-600" placeholder="Type a message..." />
+            <button onClick={handleSendMessage} className="rounded-md bg-teal-700 px-4 py-2 text-white font-bold hover:bg-teal-800 transition-colors">Send</button>
+          </div>
+          {messageDraft && <p className="text-xs text-slate-500">{messageDraft.length} characters</p>}
+        </footer>
       </div>
     </section>
   );
 
   const renderSettings = () => (
     <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      {successMessage && (
+        <div className="mb-4 rounded-md bg-green-50 p-4 text-sm font-bold text-green-700 border border-green-200">
+          ✓ {successMessage}
+        </div>
+      )}
       <div className="mb-6 flex gap-6 border-b border-slate-200 text-sm font-bold text-slate-600">
-        {["Profile", "Platform Settings", "Security", "Notifications", "Payment Settings"].map((tab) => <button onClick={() => setSettingsTab(tab)} key={tab} className={`pb-3 ${settingsTab === tab ? "border-b-2 border-teal-700 text-teal-700" : ""}`}>{tab}</button>)}
+        {["Profile", "Platform Settings", "Security", "Notifications", "Payment Settings"].map((tab) => (
+          <button onClick={() => { setSettingsTab(tab); setFormErrors({}); setTouchedFields({}); }} key={tab} className={`pb-3 transition-all ${settingsTab === tab ? "border-b-2 border-teal-700 text-teal-700" : "hover:text-slate-800"}`}>
+            {tab}
+          </button>
+        ))}
       </div>
-      <p className="mb-5 text-sm font-semibold text-slate-500">Current tab: {settingsTab}</p>
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        <div>
-          <h2 className="mb-5 font-bold">Admin Profile</h2>
-          <div className="mb-5 flex items-center gap-4"><div className="flex h-20 w-20 items-center justify-center rounded-full bg-teal-700 text-2xl font-bold text-white">AD</div><button onClick={() => notify("Photo picker will open here.")} className="text-sm font-bold text-teal-700">Change Photo</button></div>
-          {["Full Name", "Email", "Phone Number"].map((label) => <label key={label} className="mb-4 block text-sm font-bold text-slate-600">{label}<input className="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 font-normal" /></label>)}
-          <button onClick={() => notify("Profile changes saved.")} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white">Save Changes</button>
-        </div>
-        <div>
-          <h2 className="mb-5 font-bold">Change Password</h2>
-          {["Current Password", "New Password", "Confirm New Password"].map((label) => <label key={label} className="mb-4 block text-sm font-bold text-slate-600">{label}<input type="password" className="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 font-normal" /></label>)}
-          <button onClick={() => notify("Password updated.")} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white">Update Password</button>
-        </div>
+        {settingsTab === "Profile" && (
+          <div>
+            <h2 className="mb-5 font-bold">Admin Profile</h2>
+            <div className="mb-5 flex items-center gap-4">
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-teal-700 text-2xl font-bold text-white">AD</div>
+              <button onClick={() => notify("Photo picker will open here.")} className="text-sm font-bold text-teal-700 hover:text-teal-800">Change Photo</button>
+            </div>
+            {["fullName", "email", "phone"].map((field) => {
+              const labels = { fullName: "Full Name", email: "Email", phone: "Phone Number" };
+              const error = formErrors[field] && touchedFields[field];
+              return (
+                <label key={field} className="mb-4 block text-sm font-bold text-slate-600">
+                  {labels[field]}
+                  <input 
+                    value={profileForm[field]}
+                    onChange={(e) => setProfileForm({ ...profileForm, [field]: e.target.value })}
+                    onBlur={() => handleFieldBlur(field)}
+                    className={`mt-2 w-full rounded-md border px-3 py-2 font-normal outline-none transition-colors focus:border-teal-600 ${error ? "border-red-500 bg-red-50" : "border-slate-200"}`}
+                    placeholder={field === "phone" ? "10-digit number" : ""}
+                    type={field === "email" ? "email" : "text"}
+                  />
+                  {error && <span className="mt-1 block text-xs text-red-600">{formErrors[field]}</span>}
+                </label>
+              );
+            })}
+            <button onClick={handleSaveProfile} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white hover:bg-teal-800 transition-colors">Save Changes</button>
+          </div>
+        )}
+        {settingsTab === "Profile" && (
+          <div>
+            <h2 className="mb-5 font-bold">Change Password</h2>
+            {["current", "new", "confirm"].map((field) => {
+              const labels = { current: "Current Password", new: "New Password", confirm: "Confirm New Password" };
+              const error = formErrors[field] && touchedFields[field];
+              return (
+                <label key={field} className="mb-4 block text-sm font-bold text-slate-600">
+                  {labels[field]}
+                  <input 
+                    value={passwordForm[field]}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, [field]: e.target.value })}
+                    onBlur={() => handleFieldBlur(field)}
+                    type="password"
+                    className={`mt-2 w-full rounded-md border px-3 py-2 font-normal outline-none transition-colors focus:border-teal-600 ${error ? "border-red-500 bg-red-50" : "border-slate-200"}`}
+                  />
+                  {error && <span className="mt-1 block text-xs text-red-600">{formErrors[field]}</span>}
+                </label>
+              );
+            })}
+            <button onClick={handleUpdatePassword} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white hover:bg-teal-800 transition-colors">Update Password</button>
+          </div>
+        )}
+        {settingsTab === "Security" && (
+          <div className="col-span-2">
+            <h2 className="mb-5 font-bold">Security Settings</h2>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between rounded-lg border border-slate-200 p-4">
+                <div>
+                  <p className="font-bold">Two-Factor Authentication</p>
+                  <p className="text-xs text-slate-500">Add an extra layer of security</p>
+                </div>
+                <button className="rounded-md bg-slate-200 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-300 transition-colors">Enable</button>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-slate-200 p-4">
+                <div>
+                  <p className="font-bold">Login History</p>
+                  <p className="text-xs text-slate-500">View your recent login activity</p>
+                </div>
+                <button className="rounded-md bg-teal-700 px-4 py-2 text-sm font-bold text-white hover:bg-teal-800 transition-colors">View</button>
+              </div>
+            </div>
+          </div>
+        )}
+        {settingsTab === "Notifications" && (
+          <div className="col-span-2">
+            <h2 className="mb-5 font-bold">Notification Preferences</h2>
+            <div className="space-y-3">
+              {["Email Notifications", "SMS Alerts", "Push Notifications", "Weekly Reports"].map((item) => (
+                <label key={item} className="flex items-center gap-3 rounded-lg border border-slate-200 p-4 cursor-pointer hover:bg-slate-50">
+                  <input type="checkbox" className="rounded" defaultChecked />
+                  <span className="font-bold text-slate-700">{item}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+        {settingsTab === "Payment Settings" && (
+          <div className="col-span-2">
+            <h2 className="mb-5 font-bold">Payment Configuration</h2>
+            <div className="space-y-4">
+              <div className="rounded-lg border border-slate-200 p-4">
+                <p className="font-bold">Bank Account</p>
+                <p className="text-sm text-slate-600">HDFC Bank - XXXX XXXX XXXX 5678</p>
+                <button className="mt-3 text-sm font-bold text-teal-700 hover:text-teal-800">Edit</button>
+              </div>
+              <div className="rounded-lg border border-slate-200 p-4">
+                <p className="font-bold">Commission Rate</p>
+                <p className="text-sm text-slate-600">5% per transaction</p>
+                <button className="mt-3 text-sm font-bold text-teal-700 hover:text-teal-800">Change</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );
