@@ -154,8 +154,8 @@ const Donate = () => {
             decoding="async"
             onLoad={() => setLoading(false)}
             onError={(event) => {
-              event.currentTarget.src =
-                "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=1000&q=80";
+              event.currentTarget.onerror = null;
+              event.currentTarget.src = `https://picsum.photos/seed/fundraising-campaign-${campaign.id}/1000/600`;
               setLoading(false);
             }}
             className={`w-full h-72 object-cover ${loading ? "hidden" : "block"}`}

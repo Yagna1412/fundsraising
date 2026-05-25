@@ -2,8 +2,8 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import campaigns from "./campaignData";
 
-const FALLBACK_IMAGE =
-  "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=1000&q=80";
+const getFallbackImage = (id) =>
+  `https://picsum.photos/seed/fundraising-campaign-${id}/1000/600`;
 
 const Campaigns = () => {
   const navigate = useNavigate();
@@ -32,7 +32,8 @@ const Campaigns = () => {
                 loading="lazy"
                 decoding="async"
                 onError={(event) => {
-                  event.currentTarget.src = FALLBACK_IMAGE;
+                  event.currentTarget.onerror = null;
+                  event.currentTarget.src = getFallbackImage(camp.id);
                 }}
                 className="h-48 w-full object-cover"
               />

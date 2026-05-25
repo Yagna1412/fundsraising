@@ -587,6 +587,202 @@ const campaigns = [
       "Quarterly growth tracking enabled",
     ],
   },
+  {
+    id: 13,
+    title: "Solar Lights for Rural Homes",
+    category: "Environment",
+    description: "Provide clean solar lighting to families without reliable electricity.",
+    detailedDescription:
+      "Help rural households replace unsafe kerosene lamps with rechargeable solar lighting kits. Reliable light allows children to study after sunset, improves household safety, and reduces recurring fuel expenses.",
+    goal: 90000,
+    raised: 37500,
+    image:
+      "https://images.unsplash.com/photo-1509391366360-2e959784a276?auto=format&fit=crop&w=1000&q=80",
+    beneficiaries: "400+ households",
+    duration: "9 months",
+    recipientType: "family",
+    recipients: [
+      {
+        id: "solar-reddy",
+        name: "Reddy Family",
+        location: "Mahbubnagar, Telangana",
+        need: "Two-room solar lighting kit",
+        target: 14000,
+      },
+      {
+        id: "solar-munda",
+        name: "Munda Family",
+        location: "Khunti, Jharkhand",
+        need: "Lanterns and phone charging unit",
+        target: 12500,
+      },
+      {
+        id: "solar-bai",
+        name: "Bai Family",
+        location: "Barmer, Rajasthan",
+        need: "Solar panels and battery replacement",
+        target: 18000,
+      },
+    ],
+    fundAllocation: [
+      { label: "Solar Kits", percentage: 60 },
+      { label: "Installation", percentage: 18 },
+      { label: "Training & Maintenance", percentage: 12 },
+      { label: "Transport", percentage: 10 },
+    ],
+    impact: [
+      "400+ homes equipped with safe light",
+      "Lower kerosene use and indoor smoke exposure",
+      "Extended evening study time for children",
+    ],
+  },
+  {
+    id: 14,
+    title: "Rescue and Care for Street Animals",
+    category: "Animal Welfare",
+    description: "Fund treatment, food, shelter, and vaccinations for rescued animals.",
+    detailedDescription:
+      "Support rescue teams providing emergency medical care, vaccination, nutritious feeding, and temporary shelter for injured and abandoned street animals. The program also supports adoption readiness and community awareness.",
+    goal: 72000,
+    raised: 28400,
+    image:
+      "https://images.unsplash.com/photo-1450778869180-41d0601e046e?auto=format&fit=crop&w=1000&q=80",
+    beneficiaries: "300+ rescued animals",
+    duration: "Ongoing",
+    recipientType: "shelter",
+    recipients: [
+      {
+        id: "animal-paws",
+        name: "Safe Paws Rescue",
+        location: "Hyderabad, Telangana",
+        need: "Emergency surgery and medicines",
+        target: 26000,
+      },
+      {
+        id: "animal-care",
+        name: "City Animal Care",
+        location: "Bengaluru, Karnataka",
+        need: "Vaccinations and daily meals",
+        target: 17000,
+      },
+      {
+        id: "animal-hope",
+        name: "Hope Kennel",
+        location: "Visakhapatnam, Andhra Pradesh",
+        need: "Shelter repairs and adoption care",
+        target: 19000,
+      },
+    ],
+    fundAllocation: [
+      { label: "Medical Treatment", percentage: 42 },
+      { label: "Food & Nutrition", percentage: 28 },
+      { label: "Shelter Care", percentage: 20 },
+      { label: "Rescue Transport", percentage: 10 },
+    ],
+    impact: [
+      "300+ animals rescued and treated",
+      "Vaccination drives reduce preventable disease",
+      "More animals prepared for adoption",
+    ],
+  },
+  {
+    id: 15,
+    title: "Digital Classrooms for Village Schools",
+    category: "Education",
+    description: "Equip government schools with projectors, tablets, and digital lessons.",
+    detailedDescription:
+      "Bridge the learning gap in village schools by setting up digital classrooms with projectors, offline educational content, shared tablets, teacher training, and dependable power backup.",
+    goal: 125000,
+    raised: 52000,
+    image:
+      "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=1000&q=80",
+    beneficiaries: "900+ students",
+    duration: "11 months",
+    recipientType: "school",
+    recipients: [
+      {
+        id: "digital-zp",
+        name: "ZP High School",
+        location: "Nalgonda, Telangana",
+        need: "Projector and digital science lessons",
+        target: 36000,
+      },
+      {
+        id: "digital-govt",
+        name: "Government Primary School",
+        location: "Kurnool, Andhra Pradesh",
+        need: "Shared tablets and literacy content",
+        target: 31000,
+      },
+      {
+        id: "digital-rural",
+        name: "Rural Model School",
+        location: "Raichur, Karnataka",
+        need: "Power backup and teacher training",
+        target: 28000,
+      },
+    ],
+    fundAllocation: [
+      { label: "Devices & Projectors", percentage: 48 },
+      { label: "Learning Content", percentage: 20 },
+      { label: "Power Backup", percentage: 17 },
+      { label: "Teacher Training", percentage: 15 },
+    ],
+    impact: [
+      "900+ students gain digital learning access",
+      "Interactive lessons across core subjects",
+      "Teachers trained to use classroom technology",
+    ],
+  },
+  {
+    id: 16,
+    title: "Rebuild Homes After Floods",
+    category: "Emergency",
+    description: "Restore damaged homes and essential household items for flood survivors.",
+    detailedDescription:
+      "Support families recovering from severe floods with home repairs, sanitation restoration, bedding, kitchen supplies, and temporary livelihood assistance while communities rebuild.",
+    goal: 160000,
+    raised: 68500,
+    image:
+      "https://images.unsplash.com/photo-1547683905-f686c993aae5?auto=format&fit=crop&w=1000&q=80",
+    beneficiaries: "120+ affected families",
+    duration: "8 months",
+    recipientType: "family",
+    recipients: [
+      {
+        id: "flood-naik",
+        name: "Naik Family",
+        location: "Kodagu, Karnataka",
+        need: "Roof repair and bedding replacement",
+        target: 42000,
+      },
+      {
+        id: "flood-saha",
+        name: "Saha Family",
+        location: "Silchar, Assam",
+        need: "Wall restoration and kitchen supplies",
+        target: 38000,
+      },
+      {
+        id: "flood-roy",
+        name: "Roy Family",
+        location: "Malda, West Bengal",
+        need: "Sanitation repairs and livelihood kit",
+        target: 36000,
+      },
+    ],
+    fundAllocation: [
+      { label: "Home Repairs", percentage: 52 },
+      { label: "Household Essentials", percentage: 22 },
+      { label: "Sanitation Restoration", percentage: 16 },
+      { label: "Livelihood Support", percentage: 10 },
+    ],
+    impact: [
+      "120+ families return to safer homes",
+      "Essential sanitation systems restored",
+      "Recovery support for displaced households",
+    ],
+  },
 ];
 
 export const getCampaignById = (id) =>
