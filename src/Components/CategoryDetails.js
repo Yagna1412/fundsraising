@@ -1,5 +1,6 @@
 import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 
 const descriptions = {
   "Help Children": "Support food, shelter, education and basic needs for children.",
@@ -31,6 +32,14 @@ const CategoryDetails = () => {
 
   return (
     <div className="p-10 max-w-3xl mx-auto">
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
+        className="mb-6 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-teal-800 shadow-sm transition hover:bg-teal-50"
+      >
+        <ArrowLeft size={16} />
+        Back
+      </button>
       <img
         src={images[name]}
         alt={name}

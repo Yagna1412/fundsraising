@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 
 const DEFAULT_PREVIEW_IMAGE =
   "https://images.unsplash.com/photo-1531746790731-6c087fecd65a?auto=format&fit=crop&w=1600&q=80";
@@ -98,6 +99,14 @@ const CreateFundraiser = () => {
     <div className="min-h-screen bg-gray-100 py-12 px-5">
 
       <div className="max-w-6xl mx-auto">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="mb-6 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-teal-800 shadow-sm hover:bg-teal-50"
+        >
+          <ArrowLeft size={16} />
+          Back
+        </button>
 
         <div className="text-center mb-10">
 
