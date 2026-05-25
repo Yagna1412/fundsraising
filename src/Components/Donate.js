@@ -139,7 +139,7 @@ const Donate = () => {
             </button>
             <button
               type="button"
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate("/campaigns")}
               className="rounded-lg bg-teal-700 px-5 py-3 font-bold text-white transition hover:bg-teal-800"
             >
               Done
