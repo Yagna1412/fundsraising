@@ -17,6 +17,7 @@ const Donate = () => {
     "";
 
   const [loading, setLoading] = useState(true);
+  const [completedDonation, setCompletedDonation] = useState(null);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -84,11 +85,10 @@ const Donate = () => {
 
     localStorage.setItem("userDonations", JSON.stringify(donations));
 
-    alert(
-      `Rs. ${form.amount} donated successfully to ${selectedRecipient.name}`
-    );
-
-    navigate("/dashboard");
+    setCompletedDonation({
+      amount: form.amount,
+      recipientName: selectedRecipient.name,
+    });
   };
 
   const impact =
@@ -98,8 +98,51 @@ const Donate = () => {
       ? `Can strongly support ${selectedRecipient?.name || "this recipient"}`
       : "Every contribution matters";
 
+  if (completedDonation) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-100 px-5 py-12">
+        <div className="w-full max-w-lg rounded-2xl bg-white p-8 text-center shadow-lg">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-teal-100 text-3xl font-bold text-teal-700">
+            +
+          </div>
+          <h1 className="mt-5 text-3xl font-bold text-slate-900">Donation Successful</h1>
+          <p className="mt-3 text-gray-600">
+            Rs. {Number(completedDonation.amount).toLocaleString()} donated successfully to{" "}
+            {completedDonation.recipientName}.
+          </p>
+          <div className="mt-8 grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => navigate("/campaigns")}
+              className="rounded-lg border border-teal-700 px-5 py-3 font-bold text-teal-700 transition hover:bg-teal-50"
+            >
+              Back to Campaigns
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/dashboard")}
+              className="rounded-lg bg-teal-700 px-5 py-3 font-bold text-white transition hover:bg-teal-800"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 py-12 px-5">
+      <div className="mx-auto mb-6 flex max-w-6xl flex-wrap gap-3">
+        <button
+          type="button"
+          onClick={() => navigate(`/campaigns/${campaign.id}`)}
+          className="rounded-lg border border-teal-700 bg-white px-5 py-3 font-bold text-teal-700 transition hover:bg-teal-50"
+        >
+          Back to Campaign
+        </button>
+      </div>
+
       <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-10">
         <div className="bg-white rounded-xl shadow overflow-hidden">
           {loading && <div className="h-72 bg-gray-200 animate-pulse" />}

@@ -1,262 +1,103 @@
-import React, { useState } from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
 import campaigns from "./campaignData";
 
+const FALLBACK_IMAGE =
+  "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=1000&q=80";
+
 const Campaigns = () => {
   const navigate = useNavigate();
-  const [selectedCampaign, setSelectedCampaign] = useState(null);
-
-  const closeDetails = () => setSelectedCampaign(null);
 
   return (
-    <div className="p-10 bg-gray-50 min-h-screen">
-      <h1 className="text-4xl font-bold text-[#007A8E] mb-3 text-center">
+    <div className="min-h-screen bg-gray-50 p-6 sm:p-10">
+      <h1 className="mb-3 text-center text-4xl font-bold text-[#007A8E]">
         Active Fundraising Campaigns
       </h1>
-      <p className="text-center text-gray-600 mb-10 text-lg">
-        Support causes that make a difference. See exactly how your donation helps.
+      <p className="mb-10 text-center text-lg text-gray-600">
+        Support causes that make a difference. Select a campaign to learn more.
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {campaigns.map((camp) => (
-          <div
-            key={camp.id}
-            className="bg-white shadow-lg rounded-xl overflow-hidden hover:shadow-2xl transition duration-300 flex flex-col"
-          >
-            {/* Image */}
-            <img
-              src={camp.image}
-              alt={camp.title}
-              loading="lazy"
-              decoding="async"
-              onError={(event) => {
-                event.currentTarget.src =
-                  "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=1000&q=80";
-              }}
-              className="w-full h-48 object-cover"
-            />
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+        {campaigns.map((camp) => {
+          const progress = Math.round((camp.raised / camp.goal) * 100);
 
-            <div className="p-6 flex-1 flex flex-col">
-              {/* Title and Category */}
-              <h2 className="text-xl font-bold text-gray-800">{camp.title}</h2>
-              <div className="flex items-center gap-2 mt-2">
-                <span className="inline-block px-3 py-1 bg-[#007A8E] text-white text-xs rounded-full font-semibold">
-                  {camp.category}
-                </span>
-                <span className="text-sm text-gray-500">• {camp.beneficiaries}</span>
-              </div>
+          return (
+            <article
+              key={camp.id}
+              className="flex flex-col overflow-hidden rounded-xl bg-white shadow-lg transition duration-300 hover:shadow-2xl"
+            >
+              <img
+                src={camp.image}
+                alt={camp.title}
+                loading="lazy"
+                decoding="async"
+                onError={(event) => {
+                  event.currentTarget.src = FALLBACK_IMAGE;
+                }}
+                className="h-48 w-full object-cover"
+              />
 
-              {/* Description */}
-              <p className="mt-3 text-gray-600 text-sm">{camp.description}</p>
-
-              <div className="mt-5 border border-teal-100 rounded-lg overflow-hidden">
-                <div className="bg-teal-50 px-4 py-3">
-                  <h3 className="text-sm font-bold text-gray-800">
-                    Choose a specific {camp.recipientType} to support
-                  </h3>
+              <div className="flex flex-1 flex-col p-6">
+                <div className="flex items-start justify-between gap-3">
+                  <h2 className="text-xl font-bold text-gray-800">{camp.title}</h2>
+                  <span className="shrink-0 rounded-full bg-[#007A8E] px-3 py-1 text-xs font-semibold text-white">
+                    {camp.category}
+                  </span>
                 </div>
-                <div className="divide-y divide-gray-100">
-                  {camp.recipients.slice(0, 2).map((recipient) => (
-                    <button
-                      key={recipient.id}
-                      type="button"
-                      onClick={() =>
-                        navigate(`/donate/${camp.id}?recipient=${recipient.id}`)
-                      }
-                      className="w-full text-left px-4 py-3 hover:bg-gray-50 transition"
-                    >
-                      <span className="block text-sm font-semibold text-gray-900">
-                        {recipient.name}
-                      </span>
-                      <span className="block text-xs text-gray-600">
-                        {recipient.need}
-                      </span>
-                      <span className="block text-xs text-gray-500 mt-1">
-                        {recipient.location} | Need: Rs.{" "}
-                        {recipient.target.toLocaleString()}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
 
-              {/* Progress Bar */}
-              <div className="mt-5">
-                <div className="flex justify-between text-xs font-semibold text-gray-700 mb-2">
-                  <span>₹{camp.raised.toLocaleString()}</span>
-                  <span>{Math.round((camp.raised / camp.goal) * 100)}%</span>
-                  <span>Goal: ₹{camp.goal.toLocaleString()}</span>
+                <p className="mt-3 line-clamp-2 text-sm text-gray-600">{camp.description}</p>
+
+                <div className="mt-5">
+                  <div className="mb-2 flex justify-between text-xs font-semibold text-gray-700">
+                    <span>Rs. {camp.raised.toLocaleString()} raised</span>
+                    <span>{progress}%</span>
+                  </div>
+                  <div className="h-3 w-full rounded-full bg-gray-200">
+                    <div
+                      className="h-3 rounded-full bg-[#007A8E]"
+                      style={{ width: `${Math.min(progress, 100)}%` }}
+                    />
+                  </div>
+                  <p className="mt-2 text-xs text-gray-500">
+                    Goal: Rs. {camp.goal.toLocaleString()} | {camp.beneficiaries}
+                  </p>
                 </div>
-                <div className="w-full bg-gray-300 rounded-full h-3">
-                  <div
-                    className="bg-[#007A8E] h-3 rounded-full transition-all"
-                    style={{
-                      width: `${Math.min((camp.raised / camp.goal) * 100, 100)}%`,
-                    }}
-                  ></div>
+
+                <div className="mt-auto flex gap-3 pt-6">
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/campaigns/${camp.id}`)}
+                    className="flex-1 rounded-lg border border-[#007A8E] py-2 text-sm font-semibold text-[#007A8E] transition hover:bg-teal-50"
+                  >
+                    View More
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/donate/${camp.id}`)}
+                    className="flex-1 rounded-lg bg-[#007A8E] py-2 text-sm font-semibold text-white transition hover:bg-[#005F6B]"
+                  >
+                    Donate Now
+                  </button>
                 </div>
               </div>
-
-              {/* Fund Allocation Preview */}
-              <div className="mt-5 p-4 bg-gray-50 rounded-lg">
-                <h3 className="text-sm font-bold text-gray-800 mb-3">Fund Allocation</h3>
-                <div className="space-y-2">
-                  {camp.fundAllocation.slice(0, 2).map((fund, index) => (
-                    <div key={index} className="flex items-center justify-between text-xs">
-                      <span className="text-gray-700">{fund.label}</span>
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 bg-gray-300 rounded-full h-2">
-                          <div
-                            className="bg-[#007A8E] h-2 rounded-full"
-                            style={{ width: `${fund.percentage}%` }}
-                          ></div>
-                        </div>
-                        <span className="font-semibold text-gray-800 w-8">{fund.percentage}%</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Expand Details Button */}
-              <button
-                onClick={() => setSelectedCampaign(camp)}
-                className="mt-4 rounded-lg py-2 text-[#007A8E] font-semibold text-sm transition hover:bg-teal-50 hover:shadow-sm"
-              >
-                View Full Details
-              </button>
-
-              {/* Donate Button */}
-              <button
-                onClick={() => navigate(`/donate/${camp.id}`)}
-                className="mt-4 w-full bg-[#007A8E] hover:bg-[#005F6B] text-white py-2 rounded-lg font-semibold transition"
-              >
-                Donate Now
-              </button>
-            </div>
-          </div>
-        ))}
+            </article>
+          );
+        })}
       </div>
 
-      {selectedCampaign && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6">
-          <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
-            <div>
-              <div className="relative h-72 overflow-hidden bg-slate-100 sm:h-80 lg:h-[360px]">
-                <img
-                  src={selectedCampaign.image}
-                  alt={selectedCampaign.title}
-                  onError={(event) => {
-                    event.currentTarget.src =
-                      "https://images.unsplash.com/photo-1593113598332-cd288d649433?auto=format&fit=crop&w=1200&q=85";
-                  }}
-                  className="h-full w-full object-cover object-center"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-slate-950/20 to-transparent" />
-                <button
-                  type="button"
-                  onClick={closeDetails}
-                  className="absolute right-5 top-5 rounded-full bg-white/95 px-4 py-2 text-sm font-bold text-slate-700 shadow hover:bg-white"
-                >
-                  Close
-                </button>
-                <div className="absolute bottom-6 left-6 right-6">
-                  <span className="inline-flex rounded-full bg-white/95 px-3 py-1 text-xs font-bold text-teal-700">
-                    {selectedCampaign.category}
-                  </span>
-                  <h2 className="mt-3 max-w-3xl text-3xl font-black text-white sm:text-4xl">{selectedCampaign.title}</h2>
-                </div>
-              </div>
-
-              <div className="p-7">
-                <p className="mt-3 leading-7 text-slate-600">{selectedCampaign.detailedDescription}</p>
-
-                <div className="mt-6 grid grid-cols-3 gap-3">
-                  <div className="rounded-xl bg-slate-50 p-4">
-                    <p className="text-xs font-bold text-slate-500">Raised</p>
-                    <p className="mt-1 font-black text-teal-700">Rs {selectedCampaign.raised.toLocaleString()}</p>
-                  </div>
-                  <div className="rounded-xl bg-slate-50 p-4">
-                    <p className="text-xs font-bold text-slate-500">Goal</p>
-                    <p className="mt-1 font-black text-slate-900">Rs {selectedCampaign.goal.toLocaleString()}</p>
-                  </div>
-                  <div className="rounded-xl bg-slate-50 p-4">
-                    <p className="text-xs font-bold text-slate-500">Duration</p>
-                    <p className="mt-1 font-black text-slate-900">{selectedCampaign.duration}</p>
-                  </div>
-                </div>
-
-                <div className="mt-6">
-                  <h3 className="font-black text-slate-900">Specific {selectedCampaign.recipientType}s you can support</h3>
-                  <div className="mt-3 grid gap-3">
-                    {selectedCampaign.recipients.map((recipient) => (
-                      <button
-                        key={recipient.id}
-                        type="button"
-                        onClick={() => navigate(`/donate/${selectedCampaign.id}?recipient=${recipient.id}`)}
-                        className="rounded-xl border border-slate-200 p-4 text-left transition hover:border-teal-500 hover:bg-teal-50"
-                      >
-                        <span className="block font-bold text-slate-900">{recipient.name}</span>
-                        <span className="mt-1 block text-sm text-slate-600">{recipient.need}</span>
-                        <span className="mt-1 block text-xs font-semibold text-slate-500">
-                          {recipient.location} | Target Rs. {recipient.target.toLocaleString()}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mt-6 grid gap-5 lg:grid-cols-2">
-                  <div>
-                    <h3 className="mb-3 font-black text-slate-900">Budget Breakdown</h3>
-                    <div className="space-y-2">
-                      {selectedCampaign.fundAllocation.map((fund) => (
-                        <div key={fund.label} className="flex items-center justify-between gap-3 text-sm">
-                          <span className="text-slate-700">{fund.label}</span>
-                          <span className="font-bold text-slate-900">{fund.percentage}%</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="mb-3 font-black text-slate-900">Expected Impact</h3>
-                    <ul className="space-y-2 text-sm text-slate-600">
-                      {selectedCampaign.impact.map((item) => (
-                        <li key={item} className="flex gap-2">
-                          <span className="font-black text-teal-700">✓</span>
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => navigate(`/donate/${selectedCampaign.id}`)}
-                  className="mt-7 w-full rounded-xl bg-[#007A8E] py-3 font-black text-white transition hover:bg-[#005F6B]"
-                >
-                  Donate to this Campaign
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Additional Info Section */}
-      <div className="mt-16 bg-white rounded-xl shadow-lg p-8">
-        <h2 className="text-2xl font-bold text-[#007A8E] mb-6">Why Your Donation Matters</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="mt-16 rounded-xl bg-white p-8 shadow-lg">
+        <h2 className="mb-6 text-2xl font-bold text-[#007A8E]">Why Your Donation Matters</h2>
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
           <div className="text-center">
-            <div className="text-4xl font-bold text-[#007A8E] mb-2">100%</div>
-            <p className="text-gray-600">Transparent fund allocation & tracking</p>
+            <div className="mb-2 text-4xl font-bold text-[#007A8E]">100%</div>
+            <p className="text-gray-600">Transparent fund allocation and tracking</p>
           </div>
           <div className="text-center">
-            <div className="text-4xl font-bold text-[#007A8E] mb-2">50K+</div>
+            <div className="mb-2 text-4xl font-bold text-[#007A8E]">50K+</div>
             <p className="text-gray-600">Lives positively impacted annually</p>
           </div>
           <div className="text-center">
-            <div className="text-4xl font-bold text-[#007A8E] mb-2">15+</div>
+            <div className="mb-2 text-4xl font-bold text-[#007A8E]">15+</div>
             <p className="text-gray-600">Active campaigns across sectors</p>
           </div>
         </div>

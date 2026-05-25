@@ -11,6 +11,7 @@ import UserDashboard from "./Components/UserDashboard";
 
 import CategoryDetails from "./Components/CategoryDetails";
 import Campaigns from "./Components/Campaigns";
+import CampaignDetails from "./Components/CampaignDetails";
 import Donate from "./Components/Donate";
 import Footer from "./Components/Footer";
 import AdminDashboard from "./Components/AdminDashboard";
@@ -65,6 +66,15 @@ path="/campaigns"
 element={
 <ProtectedRoute>
 <Campaigns />
+</ProtectedRoute>
+}
+/>
+
+<Route
+path="/campaigns/:id"
+element={
+<ProtectedRoute>
+<CampaignDetails />
 </ProtectedRoute>
 }
 />
