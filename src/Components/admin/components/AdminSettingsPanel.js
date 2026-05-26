@@ -118,7 +118,7 @@ const AdminSettingsPanel = ({
       )}
 
       {settingsTab === "Website" && (
-        <div className="col-span-2 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:col-span-2 lg:grid-cols-2">
           <div>
             <h2 className="mb-5 text-lg font-bold text-slate-900">Website settings</h2>
             {[
@@ -185,7 +185,7 @@ const AdminSettingsPanel = ({
       )}
 
       {settingsTab === "Payment Settings" && (
-        <div className="col-span-2 grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 lg:col-span-2">
           <div className="rounded-xl border border-slate-200 p-4">
             <p className="font-bold text-slate-900">Bank account</p>
             <p className="mt-1 text-sm text-slate-600">HDFC Bank · XXXX XXXX 5678</p>

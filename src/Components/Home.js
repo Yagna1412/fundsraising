@@ -37,7 +37,7 @@ const Home = () => {
 
   return (
     <div className="flex w-full min-w-0 flex-col">
-      <section className="relative h-[min(55vh,600px)] w-full shrink-0">
+      <section className="relative h-[360px] w-full shrink-0 sm:h-[min(55vh,600px)]">
         <LiveDonorHome donations={donations} />
         <div className="h-full w-full">
           <BannerImage

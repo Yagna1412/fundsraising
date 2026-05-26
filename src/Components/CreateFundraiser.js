@@ -96,7 +96,7 @@ const CreateFundraiser = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 py-12 px-5">
+    <div className="min-h-screen bg-gray-100 px-4 py-6 sm:px-5 sm:py-12">
 
       <div className="max-w-6xl mx-auto">
         <button
@@ -108,9 +108,9 @@ const CreateFundraiser = () => {
           Back
         </button>
 
-        <div className="text-center mb-10">
+        <div className="mb-8 text-center sm:mb-10">
 
-          <h1 className="text-5xl font-bold text-teal-700">
+          <h1 className="text-3xl font-bold text-teal-700 sm:text-4xl lg:text-5xl">
             Create Your Fundraiser
           </h1>
 
@@ -121,11 +121,11 @@ const CreateFundraiser = () => {
 
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-10">
+        <div className="grid gap-6 lg:grid-cols-2 lg:gap-10">
 
           {/* LEFT */}
 
-          <div className="bg-white rounded-xl shadow p-8">
+          <div className="rounded-xl bg-white p-5 shadow sm:p-8">
 
             <h2 className="text-2xl font-bold mb-6">
               Fundraiser Details
@@ -240,7 +240,7 @@ const CreateFundraiser = () => {
                   type="file"
                   accept="image/*"
                   onChange={handleImage}
-                  className="mt-2"
+                  className="mt-2 block w-full text-sm"
                 />
 
               </div>
@@ -259,7 +259,7 @@ const CreateFundraiser = () => {
 
           <div className="bg-white rounded-xl shadow overflow-hidden">
 
-            <div className="h-72 bg-gray-100">
+            <div className="h-52 bg-gray-100 sm:h-72">
 
               {preview ? (
 
@@ -279,9 +279,9 @@ const CreateFundraiser = () => {
 
             </div>
 
-            <div className="p-8">
+            <div className="p-5 sm:p-8">
 
-              <h2 className="text-3xl font-bold">
+              <h2 className="break-words text-2xl font-bold sm:text-3xl">
 
                 {form.title ||
                   "Campaign Title"}
@@ -304,7 +304,7 @@ const CreateFundraiser = () => {
 
               <div className="mt-8">
 
-                <div className="flex justify-between">
+                <div className="flex flex-wrap justify-between gap-2">
 
                   <span>
                     Raised ₹0

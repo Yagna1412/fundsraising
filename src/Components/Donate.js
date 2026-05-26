@@ -119,12 +119,12 @@ const Donate = () => {
 
   if (completedDonation) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-100 px-5 py-12">
-        <div className="w-full max-w-lg rounded-2xl bg-white p-8 text-center shadow-lg">
+      <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4 py-8 sm:px-5 sm:py-12">
+        <div className="w-full max-w-lg rounded-2xl bg-white p-5 text-center shadow-lg sm:p-8">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-teal-100 text-3xl font-bold text-teal-700">
             +
           </div>
-          <h1 className="mt-5 text-3xl font-bold text-slate-900">Donation Successful</h1>
+          <h1 className="mt-5 text-2xl font-bold text-slate-900 sm:text-3xl">Donation Successful</h1>
           <p className="mt-3 text-gray-600">
             Rs. {Number(completedDonation.amount).toLocaleString()} donated successfully to{" "}
             {completedDonation.recipientName}.
@@ -151,7 +151,7 @@ const Donate = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 py-12 px-5">
+    <div className="min-h-screen bg-gray-100 px-4 py-6 sm:px-5 sm:py-12">
       <div className="mx-auto mb-6 flex max-w-6xl flex-wrap gap-3">
         <button
           type="button"
@@ -162,7 +162,7 @@ const Donate = () => {
         </button>
       </div>
 
-      <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-10">
+      <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-2 lg:gap-10">
         <div className="bg-white rounded-xl shadow overflow-hidden">
           {loading && <div className="h-72 bg-gray-200 animate-pulse" />}
 
@@ -180,15 +180,15 @@ const Donate = () => {
             className={`w-full h-72 object-cover ${loading ? "hidden" : "block"}`}
           />
 
-            <div className="p-6 sm:p-8">
-              <h1 className="text-2xl font-bold text-teal-800 sm:text-3xl">{campaign.title}</h1>
+            <div className="p-5 sm:p-8">
+              <h1 className="text-xl font-bold text-teal-800 sm:text-3xl">{campaign.title}</h1>
 
               <span className="mt-3 inline-block rounded-full bg-teal-100 px-4 py-1 text-sm font-semibold text-teal-800">
                 {campaign.category}
               </span>
 
               <div className="mt-8">
-                <div className="flex justify-between text-sm font-semibold text-slate-700">
+                <div className="flex flex-wrap justify-between gap-2 text-sm font-semibold text-slate-700">
                   <span>Raised Rs. {campaign.raised.toLocaleString("en-IN")}</span>
                   <span>Goal Rs. {campaign.goal.toLocaleString("en-IN")}</span>
                 </div>
@@ -217,7 +217,7 @@ const Donate = () => {
             </div>
           </div>
 
-          <div className="rounded-xl bg-white p-6 shadow-md sm:p-8">
+          <div className="rounded-xl bg-white p-5 shadow-md sm:p-8">
             <h2 className="text-2xl font-bold text-slate-900">Complete Donation</h2>
             <p className="mb-6 mt-1 text-sm text-slate-600">
               Select the exact {campaign.recipientType} your donation should support.

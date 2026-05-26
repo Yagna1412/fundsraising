@@ -91,9 +91,9 @@ const SectionTitle = ({ icon, title }) => (
 );
 
 const DetailRow = ({ label, value }) => (
-  <div>
+  <div className="min-w-0">
     <p className="text-xs font-bold text-slate-600">{label}</p>
-    <p className="mt-1 text-sm text-slate-700">{value}</p>
+    <p className="mt-1 break-words text-sm text-slate-700">{value}</p>
   </div>
 );
 
@@ -123,11 +123,11 @@ export default function UserDashboard() {
   ];
 
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-8 text-slate-800">
+    <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-800 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-[1720px]">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-teal-700">
+            <h1 className="text-2xl font-bold text-teal-700 sm:text-3xl">
               Welcome back, {userProfile.name}! <span aria-hidden="true">👋</span>
             </h1>
             <p className="mt-2 text-base text-slate-600">
@@ -144,7 +144,7 @@ export default function UserDashboard() {
         </div>
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[2.1fr_0.9fr_0.85fr_1fr_0.85fr]">
-          <Card className="p-7">
+          <Card className="p-5 sm:p-7">
             <div className="flex flex-col items-center gap-8 sm:flex-row">
               <div className="rounded-full border-4 border-teal-700 p-1">
                 <img
@@ -153,15 +153,15 @@ export default function UserDashboard() {
                   className="h-36 w-36 rounded-full object-cover"
                 />
               </div>
-              <div className="space-y-4">
-                <h2 className="text-2xl font-bold text-slate-900">{userProfile.name}</h2>
-                <p className="flex items-center gap-4 text-base text-slate-600">
+              <div className="min-w-0 space-y-4">
+                <h2 className="break-words text-xl font-bold text-slate-900 sm:text-2xl">{userProfile.name}</h2>
+                <p className="flex min-w-0 items-start gap-3 break-all text-sm text-slate-600 sm:text-base">
                   <Mail size={17} className="text-slate-600" /> {userProfile.email}
                 </p>
-                <p className="flex items-center gap-4 text-base text-slate-600">
+                <p className="flex items-start gap-3 text-sm text-slate-600 sm:text-base">
                   <Phone size={17} className="text-slate-600" /> {userProfile.phone}
                 </p>
-                <p className="flex items-center gap-4 text-base text-slate-600">
+                <p className="flex items-start gap-3 text-sm text-slate-600 sm:text-base">
                   <MapPin size={17} className="text-slate-600" /> {userProfile.address}
                 </p>
                 <span className="inline-flex items-center gap-2 rounded-md bg-teal-50 px-4 py-2 text-sm font-medium text-teal-700">
@@ -234,21 +234,21 @@ export default function UserDashboard() {
           <Card className="p-7">
             <SectionTitle icon={<Heart size={24} fill="currentColor" />} title="Donation Preferences" />
             <div className="space-y-6">
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <p className="text-sm font-bold text-slate-600">Causes Interested In</p>
                 <span className="rounded-md bg-teal-50 px-4 py-2 text-sm font-medium text-teal-700">
                   {userProfile.favoriteCause}
                 </span>
               </div>
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <p className="text-sm font-bold text-slate-600">Preferred Monthly Budget</p>
                 <p className="text-sm text-slate-700">{userProfile.monthlyBudget}</p>
               </div>
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <p className="text-sm font-bold text-slate-600">Anonymous Donation</p>
                 <p className="flex items-center gap-2 text-sm text-slate-700"><CheckCircle size={16} className="text-green-600" /> Yes</p>
               </div>
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <p className="text-sm font-bold text-slate-600">Receive Updates</p>
                 <p className="flex items-center gap-2 text-sm text-slate-700"><CheckCircle size={16} className="text-green-600" /> Yes</p>
               </div>
@@ -258,15 +258,15 @@ export default function UserDashboard() {
 
         <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr_0.78fr]">
           <Card className="p-6">
-            <div className="mb-4 flex items-center justify-between">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <SectionTitle icon={<ClipboardList size={24} />} title="Recent Donations" />
               <button onClick={() => setShowAllDonations((current) => !current)} className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">
                 {showAllDonations ? "Show Recent" : "View All Donations"}
               </button>
             </div>
 
-            <div className="overflow-hidden rounded-lg border border-slate-200">
-              <table className="w-full border-collapse text-left text-sm">
+            <div className="overflow-x-auto rounded-lg border border-slate-200">
+              <table className="min-w-[700px] w-full border-collapse text-left text-sm">
                 <thead className="bg-teal-700 text-white">
                   <tr>
                     <th className="px-4 py-3 font-bold">Campaign</th>
@@ -308,13 +308,13 @@ export default function UserDashboard() {
                 <button
                   key={item.title}
                   onClick={item.action}
-                  className="flex w-full items-center justify-between border-b border-slate-200 px-5 py-4 text-left last:border-b-0 hover:bg-slate-50"
+                  className="flex w-full items-center justify-between gap-3 border-b border-slate-200 px-4 py-4 text-left last:border-b-0 hover:bg-slate-50 sm:px-5"
                 >
-                  <span className="flex items-center gap-4">
+                  <span className="flex min-w-0 items-center gap-3 sm:gap-4">
                     <span className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-700 text-white">
                       {item.icon}
                     </span>
-                    <span>
+                    <span className="min-w-0">
                       <span className="block text-sm font-bold text-teal-700">{item.title}</span>
                       <span className="block text-sm text-slate-500">{item.text}</span>
                     </span>

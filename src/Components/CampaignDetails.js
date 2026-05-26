@@ -31,8 +31,8 @@ const CampaignDetails = () => {
   const progress = Math.round((campaign.raised / campaign.goal) * 100);
 
   return (
-    <main className="min-h-screen bg-gray-50 px-4 py-8 sm:px-8">
-      <div className="mx-auto max-w-6xl overflow-hidden rounded-3xl bg-white shadow-xl">
+    <main className="min-h-screen bg-gray-50 px-3 py-5 sm:px-8 sm:py-8">
+      <div className="mx-auto max-w-6xl overflow-hidden rounded-2xl bg-white shadow-xl sm:rounded-3xl">
         <div className="relative h-72 overflow-hidden bg-slate-100 sm:h-96">
           <img
             src={campaign.image}
@@ -47,21 +47,21 @@ const CampaignDetails = () => {
           <button
             type="button"
             onClick={() => navigate("/campaigns")}
-            className="absolute left-5 top-5 rounded-full bg-white/95 px-4 py-2 text-sm font-bold text-slate-700 shadow transition hover:bg-white"
+            className="absolute left-3 top-3 rounded-full bg-white/95 px-3 py-2 text-xs font-bold text-slate-700 shadow transition hover:bg-white sm:left-5 sm:top-5 sm:px-4 sm:text-sm"
           >
             Back to Campaigns
           </button>
-          <div className="absolute bottom-7 left-6 right-6 sm:left-9">
+          <div className="absolute bottom-5 left-4 right-4 sm:bottom-7 sm:left-9 sm:right-6">
             <span className="inline-flex rounded-full bg-white/95 px-3 py-1 text-xs font-bold text-teal-700">
               {campaign.category}
             </span>
-            <h1 className="mt-3 max-w-3xl text-3xl font-black text-white sm:text-5xl">
+            <h1 className="mt-3 max-w-3xl text-2xl font-black leading-tight text-white sm:text-5xl">
               {campaign.title}
             </h1>
           </div>
         </div>
 
-        <div className="grid gap-8 p-6 sm:p-9 lg:grid-cols-[1fr_340px]">
+        <div className="grid gap-7 p-4 sm:p-9 lg:grid-cols-[1fr_340px]">
           <section>
             <h2 className="text-xl font-black text-slate-900">About this campaign</h2>
             <p className="mt-3 leading-7 text-slate-600">{campaign.detailedDescription}</p>
@@ -88,7 +88,7 @@ const CampaignDetails = () => {
               </div>
             </div>
 
-            <div className="mt-8 grid gap-8 md:grid-cols-2">
+            <div className="mt-8 grid gap-7 md:grid-cols-2">
               <div>
                 <h2 className="mb-3 font-black text-slate-900">Budget Breakdown</h2>
                 <div className="space-y-3">
@@ -124,7 +124,7 @@ const CampaignDetails = () => {
 
           <aside className="h-fit rounded-2xl bg-slate-50 p-5">
             <h2 className="text-lg font-black text-slate-900">Funding Progress</h2>
-            <div className="mt-5 flex justify-between text-sm font-bold">
+            <div className="mt-5 flex flex-wrap justify-between gap-2 text-sm font-bold">
               <span className="text-teal-700">Rs. {campaign.raised.toLocaleString()}</span>
               <span className="text-slate-700">{progress}% funded</span>
             </div>
@@ -136,15 +136,15 @@ const CampaignDetails = () => {
             </div>
 
             <dl className="mt-6 space-y-4 text-sm">
-              <div className="flex justify-between border-b border-slate-200 pb-3">
+              <div className="flex flex-wrap justify-between gap-2 border-b border-slate-200 pb-3">
                 <dt className="font-semibold text-slate-500">Goal</dt>
                 <dd className="font-bold text-slate-900">Rs. {campaign.goal.toLocaleString()}</dd>
               </div>
-              <div className="flex justify-between border-b border-slate-200 pb-3">
+              <div className="flex flex-wrap justify-between gap-2 border-b border-slate-200 pb-3">
                 <dt className="font-semibold text-slate-500">Duration</dt>
                 <dd className="font-bold text-slate-900">{campaign.duration}</dd>
               </div>
-              <div className="flex justify-between">
+              <div className="flex flex-wrap justify-between gap-2">
                 <dt className="font-semibold text-slate-500">Beneficiaries</dt>
                 <dd className="font-bold text-slate-900">{campaign.beneficiaries}</dd>
               </div>

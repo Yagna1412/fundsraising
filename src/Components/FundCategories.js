@@ -28,8 +28,8 @@ const FundCategories = () => {
   };
 
   return (
-    <div className="p-10">
-      <h1 className="text-3xl font-bold text-center mb-8 text-[#007A8E]">
+    <div className="px-4 py-8 sm:p-10">
+      <h1 className="mb-8 text-center text-2xl font-bold text-[#007A8E] sm:text-3xl">
         Choose a Fundraising Category
       </h1>
 
@@ -37,7 +37,7 @@ const FundCategories = () => {
         {categories.map((cat, index) => (
           <div
             key={index}
-            className="rounded-lg shadow-xl bg-white p-4 hover:scale-105 transition-transform cursor-pointer"
+            className="cursor-pointer rounded-lg bg-white p-4 shadow-xl transition-transform hover:scale-[1.02] sm:hover:scale-105"
             onClick={() => openCategory(cat.title)}
           >
             <img

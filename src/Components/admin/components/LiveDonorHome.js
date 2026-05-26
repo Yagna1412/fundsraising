@@ -26,7 +26,7 @@ const LiveDonorHome = ({ donations = [] }) => {
 
   return (
     <div
-      className="pointer-events-auto absolute left-4 top-4 z-50"
+      className="pointer-events-auto absolute left-4 top-4 z-50 hidden sm:block"
       onMouseEnter={() => setExpanded(true)}
       onMouseLeave={() => setExpanded(false)}
     >

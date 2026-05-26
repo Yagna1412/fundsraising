@@ -31,7 +31,7 @@ const CategoryDetails = () => {
   };
 
   return (
-    <div className="p-10 max-w-3xl mx-auto">
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:p-10">
       <button
         type="button"
         onClick={() => navigate(-1)}
@@ -46,15 +46,15 @@ const CategoryDetails = () => {
         className="rounded-xl shadow-lg w-full h-60 object-cover"
       />
 
-      <h1 className="text-3xl font-bold mt-5 text-[#007A8E]">{name}</h1>
+      <h1 className="mt-5 text-2xl font-bold text-[#007A8E] sm:text-3xl">{name}</h1>
 
-      <p className="text-gray-700 mt-3 text-lg">
+      <p className="mt-3 text-base text-gray-700 sm:text-lg">
         {descriptions[name]}
       </p>
 
       <button
         onClick={startFund}
-        className="mt-6 px-5 py-3 bg-[#007A8E] text-white font-semibold rounded-lg hover:bg-[#005F6B]"
+        className="mt-6 w-full rounded-lg bg-[#007A8E] px-5 py-3 font-semibold text-white hover:bg-[#005F6B] sm:w-auto"
       >
         Start Fundraiser in {name}
       </button>

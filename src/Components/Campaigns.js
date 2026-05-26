@@ -9,15 +9,15 @@ const Campaigns = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 sm:p-10">
-      <h1 className="mb-3 text-center text-4xl font-bold text-[#007A8E]">
+    <div className="min-h-screen bg-gray-50 px-4 py-8 sm:p-10">
+      <h1 className="mb-3 text-center text-3xl font-bold text-[#007A8E] sm:text-4xl">
         Active Fundraising Campaigns
       </h1>
-      <p className="mb-10 text-center text-lg text-gray-600">
+      <p className="mb-8 text-center text-base text-gray-600 sm:mb-10 sm:text-lg">
         Support causes that make a difference. Select a campaign to learn more.
       </p>
 
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 sm:gap-8 md:grid-cols-2 lg:grid-cols-3">
         {campaigns.map((camp) => {
           const progress = Math.round((camp.raised / camp.goal) * 100);
 
@@ -38,9 +38,9 @@ const Campaigns = () => {
                 className="h-48 w-full object-cover"
               />
 
-              <div className="flex flex-1 flex-col p-6">
-                <div className="flex items-start justify-between gap-3">
-                  <h2 className="text-xl font-bold text-gray-800">{camp.title}</h2>
+              <div className="flex flex-1 flex-col p-5 sm:p-6">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <h2 className="min-w-0 flex-1 text-lg font-bold text-gray-800 sm:text-xl">{camp.title}</h2>
                   <span className="shrink-0 rounded-full bg-[#007A8E] px-3 py-1 text-xs font-semibold text-white">
                     {camp.category}
                   </span>
@@ -64,7 +64,7 @@ const Campaigns = () => {
                   </p>
                 </div>
 
-                <div className="mt-auto flex gap-3 pt-6">
+                <div className="mt-auto flex flex-col gap-3 pt-6 min-[380px]:flex-row">
                   <button
                     type="button"
                     onClick={() => navigate(`/campaigns/${camp.id}`)}
@@ -86,8 +86,8 @@ const Campaigns = () => {
         })}
       </div>
 
-      <div className="mt-16 rounded-xl bg-white p-8 shadow-lg">
-        <h2 className="mb-6 text-2xl font-bold text-[#007A8E]">Why Your Donation Matters</h2>
+      <div className="mt-12 rounded-xl bg-white p-5 shadow-lg sm:mt-16 sm:p-8">
+        <h2 className="mb-6 text-xl font-bold text-[#007A8E] sm:text-2xl">Why Your Donation Matters</h2>
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
           <div className="text-center">
             <div className="mb-2 text-4xl font-bold text-[#007A8E]">100%</div>

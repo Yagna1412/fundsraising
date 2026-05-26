@@ -49,9 +49,9 @@ const ChatBot = () => {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-[9999] font-sans">
+    <div className="fixed bottom-4 right-4 z-[9999] font-sans sm:bottom-6 sm:right-6">
       {open && (
-        <div className="mb-4 w-[min(360px,calc(100vw-32px))] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <div className="mb-3 w-[calc(100vw-32px)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:mb-4 sm:w-[360px]">
           <div className="flex items-center justify-between bg-teal-800 px-4 py-3 text-white">
             <div className="flex items-center gap-2">
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-teal-800 shadow-sm">
@@ -126,7 +126,7 @@ const ChatBot = () => {
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className="group flex h-16 w-16 items-center justify-center rounded-full bg-teal-700 text-white shadow-2xl ring-4 ring-teal-100 transition hover:-translate-y-1 hover:bg-teal-800"
+        className="group ml-auto flex h-14 w-14 items-center justify-center rounded-full bg-teal-700 text-white shadow-2xl ring-4 ring-teal-100 transition hover:-translate-y-1 hover:bg-teal-800 sm:h-16 sm:w-16"
         aria-label="Open chatbot"
       >
         {open ? <MessageCircle size={26} /> : <Bot className="transition group-hover:scale-110" size={30} />}
