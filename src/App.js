@@ -32,6 +32,17 @@ const ProtectedRoute = ({ children, role }) => {
   return children;
 };
 
+const PublicHomeRoute = () => {
+  const token = localStorage.getItem("token");
+  const currentRole = localStorage.getItem("role");
+
+  if (token) {
+    return <Navigate to={currentRole === "ADMIN" ? "/admin" : "/dashboard"} replace />;
+  }
+
+  return <Home />;
+};
+
 const Unauthorized = () => (
   <div style={{ textAlign: "center", padding: "100px" }}>
     <h1>❌ Access Denied</h1>
@@ -51,7 +62,7 @@ function AppShell() {
         className={isAdminWorkspace ? "min-h-screen w-full bg-slate-50" : "min-h-[70vh] w-full bg-[#F4F5F7]"}
       >
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<PublicHomeRoute />} />
           <Route path="/loginSignup" element={<Loginsignup />} />
 
           <Route

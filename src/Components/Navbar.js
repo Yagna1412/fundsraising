@@ -9,6 +9,7 @@ const Navbar = () => {
 
   const token = localStorage.getItem("token");
   const role = localStorage.getItem("role");
+  const landingPath = token ? (role === "ADMIN" ? "/admin" : "/dashboard") : "/";
 
   const closeMenu = () => {
     setMenuOpen(false);
@@ -31,7 +32,7 @@ const Navbar = () => {
           className="shrink-0 text-xl font-bold sm:text-2xl"
           onClick={() => {
             closeMenu();
-            navigate("/");
+            navigate(landingPath);
           }}
         >
           MyFundraiser
@@ -48,7 +49,7 @@ const Navbar = () => {
         </button>
 
         <div className="hidden items-center gap-2 md:flex">
-          <Link to="/" className={navLinkClass}>Home</Link>
+          {!token && <Link to="/" className={navLinkClass}>Home</Link>}
           <div
             className="relative"
             onMouseEnter={() => setShowContact(true)}
@@ -85,7 +86,7 @@ const Navbar = () => {
       {menuOpen && (
         <div className="border-t border-white/15 px-4 pb-4 pt-2 md:hidden">
           <div className="flex flex-col gap-1">
-            <Link to="/" onClick={closeMenu} className={navLinkClass}>Home</Link>
+            {!token && <Link to="/" onClick={closeMenu} className={navLinkClass}>Home</Link>}
             <button
               type="button"
               onClick={() => setShowContact((visible) => !visible)}
