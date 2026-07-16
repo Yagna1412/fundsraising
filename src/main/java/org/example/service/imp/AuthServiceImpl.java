@@ -11,6 +11,7 @@ import org.example.service.AuthService;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -155,6 +156,75 @@ public class AuthServiceImpl
 
                 .build();
 
+    }
+
+    @Override
+    public AuthResponse syncFromJwt(Jwt jwt) {
+        String email = firstNonBlank(
+                jwt.getClaimAsString("email"),
+                jwt.getClaimAsString("preferred_username")
+        );
+        if (email == null || email.isBlank()) {
+            throw new RuntimeException("Keycloak token is missing an email claim");
+        }
+
+        String fullName = firstNonBlank(
+                jwt.getClaimAsString("name"),
+                jwt.getClaimAsString("given_name"),
+                email
+        );
+
+        User.Role role = extractRole(jwt);
+
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) {
+            user = User.builder()
+                    .fullName(fullName)
+                    .email(email)
+                    .password(passwordEncoder.encode(java.util.UUID.randomUUID().toString()))
+                    .role(role)
+                    .memberSince(LocalDate.now())
+                    .anonymousDonation(false)
+                    .receiveUpdates(true)
+                    .build();
+        } else {
+            user.setFullName(fullName);
+            user.setRole(role);
+        }
+
+        user = userRepository.save(user);
+
+        return AuthResponse.builder()
+                .userId(user.getId())
+                .fullName(user.getFullName())
+                .email(user.getEmail())
+                .role(user.getRole())
+                .message("Keycloak session synced")
+                .build();
+    }
+
+    @SuppressWarnings("unchecked")
+    private User.Role extractRole(Jwt jwt) {
+        Object realmAccess = jwt.getClaim("realm_access");
+        if (realmAccess instanceof java.util.Map<?, ?> map
+                && map.get("roles") instanceof java.util.Collection<?> roles) {
+            for (Object role : roles) {
+                if ("ADMIN".equalsIgnoreCase(String.valueOf(role))) {
+                    return User.Role.ADMIN;
+                }
+            }
+        }
+        return User.Role.USER;
+    }
+
+    private static String firstNonBlank(String... values) {
+        if (values == null) return null;
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
     }
 
 }

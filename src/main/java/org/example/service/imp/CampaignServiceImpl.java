@@ -56,6 +56,32 @@ public class CampaignServiceImpl
 
     }
 
+    @Override
+    public CampaignResponse createCampaign(CreateCampaignRequest request) {
+        String description = request.getDescription();
+        String shortDescription = request.getShortDescription();
+        if (shortDescription == null || shortDescription.isBlank()) {
+            shortDescription = description != null && description.length() > 180
+                    ? description.substring(0, 180)
+                    : description;
+        }
+
+        Campaign campaign = Campaign.builder()
+                .title(request.getTitle())
+                .cause(request.getCause())
+                .shortDescription(shortDescription)
+                .description(description)
+                .imageUrl(request.getImageUrl())
+                .goalAmount(request.getGoalAmount())
+                .raisedAmount(BigDecimal.ZERO)
+                .duration(request.getDuration())
+                .beneficiaries(request.getBeneficiaries())
+                .status(Campaign.CampaignStatus.ACTIVE)
+                .build();
+
+        return map(campaignRepository.save(campaign));
+    }
+
 
     private CampaignResponse map(
             Campaign campaign
@@ -69,6 +95,8 @@ public class CampaignServiceImpl
                         &&
                         campaign.getGoalAmount()
                                 .compareTo(BigDecimal.ZERO) > 0
+                        &&
+                        campaign.getRaisedAmount() != null
         ) {
 
             percentage =
@@ -90,7 +118,9 @@ public class CampaignServiceImpl
 
 
         List<RecipientResponse> recipients =
-                campaign.getRecipients()
+                (campaign.getRecipients() == null
+                        ? List.<org.example.entity.Recipient>of()
+                        : campaign.getRecipients())
                         .stream()
                         .map(
                                 recipient ->
