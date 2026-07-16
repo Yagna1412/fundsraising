@@ -23,7 +23,10 @@ const Home = () => {
     setDonations((list) => [normalized, ...list].slice(0, 12));
   }, []);
 
-  useAdminRealtime({ enabled: true, onDonation: handleLiveDonation });
+  useAdminRealtime({
+    enabled: localStorage.getItem("role") === "ADMIN",
+    onDonation: handleLiveDonation,
+  });
 
   const handleNavigation = (destination) => {
     const token = localStorage.getItem("token");

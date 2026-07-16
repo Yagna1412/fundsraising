@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getCampaignById } from "./campaignData";
+import backendApi from "../services/backendApi";
 
 const getFallbackImage = (id) =>
   `https://picsum.photos/seed/fundraising-campaign-${id}/1200/720`;
@@ -8,14 +8,43 @@ const getFallbackImage = (id) =>
 const CampaignDetails = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const campaign = getCampaignById(id);
+  const [campaign, setCampaign] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  if (!campaign) {
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const data = await backendApi.getCampaign(id);
+        if (!cancelled) setCampaign(data);
+      } catch (err) {
+        if (!cancelled) setError(err.message || "Campaign not found");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-gray-50 px-6 py-20 text-center text-slate-500">
+        Loading campaign…
+      </main>
+    );
+  }
+
+  if (error || !campaign) {
     return (
       <main className="min-h-screen bg-gray-50 px-6 py-20 text-center">
         <h1 className="text-3xl font-bold text-slate-900">Campaign Not Found</h1>
         <p className="mt-3 text-slate-600">
-          This campaign is no longer available or the link is incorrect.
+          {error || "This campaign is no longer available or the link is incorrect."}
         </p>
         <button
           type="button"
@@ -28,7 +57,9 @@ const CampaignDetails = () => {
     );
   }
 
-  const progress = Math.round((campaign.raised / campaign.goal) * 100);
+  const progress =
+    campaign.fundedPercentage ??
+    Math.round((campaign.raised / Math.max(campaign.goal, 1)) * 100);
 
   return (
     <main className="min-h-screen bg-gray-50 px-3 py-5 sm:px-8 sm:py-8">
@@ -66,27 +97,31 @@ const CampaignDetails = () => {
             <h2 className="text-xl font-black text-slate-900">About this campaign</h2>
             <p className="mt-3 leading-7 text-slate-600">{campaign.detailedDescription}</p>
 
-            <div className="mt-8">
-              <h2 className="font-black text-slate-900">
-                Specific {campaign.recipientType}s you can support
-              </h2>
-              <div className="mt-3 grid gap-3">
-                {campaign.recipients.map((recipient) => (
-                  <button
-                    key={recipient.id}
-                    type="button"
-                    onClick={() => navigate(`/donate/${campaign.id}?recipient=${recipient.id}`)}
-                    className="rounded-xl border border-slate-200 p-4 text-left transition hover:border-teal-500 hover:bg-teal-50"
-                  >
-                    <span className="block font-bold text-slate-900">{recipient.name}</span>
-                    <span className="mt-1 block text-sm text-slate-600">{recipient.need}</span>
-                    <span className="mt-1 block text-xs font-semibold text-slate-500">
-                      {recipient.location} | Target Rs. {recipient.target.toLocaleString()}
-                    </span>
-                  </button>
-                ))}
+            {campaign.recipients?.length > 0 && (
+              <div className="mt-8">
+                <h2 className="font-black text-slate-900">
+                  Specific {campaign.recipientType}s you can support
+                </h2>
+                <div className="mt-3 grid gap-3">
+                  {campaign.recipients.map((recipient) => (
+                    <button
+                      key={recipient.id}
+                      type="button"
+                      onClick={() =>
+                        navigate(`/donate/${campaign.id}?recipient=${recipient.id}`)
+                      }
+                      className="rounded-xl border border-slate-200 p-4 text-left transition hover:border-teal-500 hover:bg-teal-50"
+                    >
+                      <span className="block font-bold text-slate-900">{recipient.name}</span>
+                      <span className="mt-1 block text-sm text-slate-600">{recipient.need}</span>
+                      <span className="mt-1 block text-xs font-semibold text-slate-500">
+                        {recipient.location} | Target Rs. {recipient.target.toLocaleString()}
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="mt-8 grid gap-7 md:grid-cols-2">
               <div>

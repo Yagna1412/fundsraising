@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { ShieldCheck, User } from "lucide-react";
 import platformApi from "../services/platformApi";
+import backendApi, { persistAuthSession } from "../services/backendApi";
+import { keycloakPasswordLogin } from "../auth/keycloakAuth";
 
-const API_URL = "http://localhost:8080/users";
 const ICON_SIZE = "20";
 const DEMO_CREDENTIALS = {
   USER: {
@@ -127,17 +127,6 @@ const Loginsignup = () => {
     return Object.keys(next).length === 0;
   };
 
-  const completeLogin = (demoAccount) => {
-    localStorage.setItem("token", `demo-${demoAccount.label.toLowerCase()}`);
-    localStorage.setItem("email", loginForm.email);
-    localStorage.setItem("role", selectedRole);
-    localStorage.setItem("user", JSON.stringify({ name: demoAccount.label, email: loginForm.email, role: selectedRole }));
-    if (rememberMe) localStorage.setItem("rememberedRole", selectedRole);
-    platformApi.logSecurityEvent({ type: "Login", user: loginForm.email, status: "Success" }).catch(() => {});
-    setFeedback({ text: `${demoAccount.label} login successful.`, type: "success" });
-    setTimeout(() => navigate(demoAccount.redirect), 600);
-  };
-
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     if (!validateLogin()) {
@@ -145,24 +134,49 @@ const Loginsignup = () => {
       return;
     }
 
-    const demoAccount = DEMO_CREDENTIALS[selectedRole];
-    if (loginForm.email === demoAccount.email && loginForm.password === demoAccount.password) {
-      completeLogin(demoAccount);
-      return;
-    }
-
     try {
-      const res = await axios.post(`${API_URL}/login`, {
-        email: loginForm.email,
-        password: loginForm.password,
-      });
-      localStorage.setItem("token", res.data.token);
-      localStorage.setItem("email", loginForm.email);
-      localStorage.setItem("role", "USER");
-      navigate("/dashboard");
+      // Prefer Keycloak when available; fall back to Spring login for local/dev
+      let auth;
+      try {
+        const kc = await keycloakPasswordLogin({
+          email: loginForm.email,
+          password: loginForm.password,
+        });
+
+        if (selectedRole === "ADMIN" && kc.role !== "ADMIN") {
+          setFeedback({
+            text: "Selected role does not match this Keycloak account",
+            type: "error",
+          });
+          return;
+        }
+
+        auth = await backendApi.syncSession();
+        persistAuthSession(auth, { keepAccessToken: true });
+        setFeedback({ text: "Keycloak login successful.", type: "success" });
+      } catch (kcError) {
+        auth = await backendApi.login({
+          email: loginForm.email,
+          password: loginForm.password,
+          role: selectedRole,
+        });
+        persistAuthSession(auth);
+        setFeedback({
+          text: auth.message || "Login successful (local auth — start Keycloak for JWT).",
+          type: "success",
+        });
+      }
+
+      if (rememberMe) localStorage.setItem("rememberedRole", selectedRole);
+
+      platformApi
+        .logSecurityEvent({ type: "Login", user: auth.email, status: "Success" })
+        .catch(() => {});
+
+      const redirect = auth.role === "ADMIN" ? "/admin" : "/dashboard";
+      setTimeout(() => navigate(redirect), 500);
     } catch (err) {
-      const message = err.response?.data?.message || err.response?.data;
-      setFeedback({ text: message || "Invalid credentials", type: "error" });
+      setFeedback({ text: err.message || "Invalid credentials", type: "error" });
     }
   };
 
@@ -170,13 +184,19 @@ const Loginsignup = () => {
     e.preventDefault();
     if (!validateRegister()) return;
     try {
-      await axios.post(`${API_URL}/register`, registerForm);
-      setFeedback({ text: "Registration successful.", type: "success" });
+      await backendApi.register({
+        fullName: registerForm.name,
+        email: registerForm.email,
+        password: registerForm.password,
+        phone: registerForm.phone,
+      });
+      setFeedback({ text: "Registration successful. Please sign in.", type: "success" });
       setRegisterOpen(false);
       setLoginOpen(true);
+      setLoginForm({ email: registerForm.email, password: "" });
     } catch (err) {
       setFeedback({
-        text: err.response?.data?.message || "Registration failed",
+        text: err.message || "Registration failed",
         type: "error",
       });
     }
@@ -225,11 +245,11 @@ const Loginsignup = () => {
             </div>
             <h1 className="text-xl font-bold leading-snug">MyFundraiser</h1>
             <p className="mt-2 text-sm leading-relaxed text-teal-100/90">
-              Sign in to manage campaigns, track donations, and run your workspace.
+              Sign in with Keycloak to manage campaigns, track donations, and run your workspace.
             </p>
           </div>
           <ul className="relative space-y-2 text-xs text-teal-100/80">
-            <li>· Secure local demo accounts</li>
+            <li>· Keycloak-secured login</li>
             <li>· User → Dashboard · Admin → Console</li>
           </ul>
         </aside>
@@ -278,7 +298,7 @@ const Loginsignup = () => {
               </div>
 
               <p className="mb-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
-                Opens <span className="font-mono text-slate-700">{activeAccount.redirect}</span> · Chrome password warnings are from old demo leaks, not this app.
+                Auth via Keycloak · Opens <span className="font-mono text-slate-700">{activeAccount.redirect}</span>
               </p>
 
               <FormInput

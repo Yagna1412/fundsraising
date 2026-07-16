@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BriefcaseBusiness,
@@ -19,57 +19,38 @@ import {
   User,
   Zap,
 } from "lucide-react";
-
-const campaignDetails = {
-  1: {
-    campaign: "Help Children for Education",
-    cause: "Education",
-    image: "https://images.unsplash.com/photo-1571260899304-425eee4c7efc?auto=format&fit=crop&w=140&q=60",
-  },
-  2: {
-    campaign: "Emergency Medical Support",
-    cause: "Medical",
-    image: "https://images.unsplash.com/photo-1599700403969-f77b3aa74837?auto=format&fit=crop&w=140&q=60",
-  },
-  3: {
-    campaign: "Disaster Relief Support",
-    cause: "Emergency",
-    image: "https://images.unsplash.com/photo-1764684994219-8347a5ab0e5e?auto=format&fit=crop&w=140&q=60",
-  },
-  4: {
-    campaign: "Food & Shelter Support",
-    cause: "Humanity",
-    image: "https://images.unsplash.com/photo-1593113598332-cd288d649433?auto=format&fit=crop&w=140&q=60",
-  },
-};
-
-const defaultDonations = [
-  { campaignId: "1", amount: "20000", date: "20 May 2026" },
-  { campaignId: "2", amount: "15000", date: "18 May 2026" },
-  { campaignId: "3", amount: "25000", date: "15 May 2026" },
-  { campaignId: "4", amount: "10000", date: "10 May 2026" },
-];
-
-const userProfile = {
-  name: "Tirumala Yagna Prasanna",
-  email: "tirumalayagnaprasanna@gmail.com",
-  phone: "+91 98765 43210",
-  address: "Hyderabad, Telangana, India",
-  role: "Software Developer",
-  company: "MyFundraiser",
-  experience: "3+ Years",
-  bankName: "HDFC Bank",
-  accountNumber: "XXXX XXXX 1234",
-  ifsc: "HDFC0001234",
-  accountType: "Savings Account",
-  favoriteCause: "Education",
-  monthlyBudget: "Rs 10,000 - Rs 20,000",
-  memberSince: "May 2026",
-  avatar: "https://randomuser.me/api/portraits/men/32.jpg",
-};
+import backendApi, {
+  clearAuthSession,
+  getStoredUserId,
+} from "../services/backendApi";
 
 const formatCurrency = (value) =>
   `Rs ${Number(value || 0).toLocaleString("en-IN")}`;
+
+const formatMemberSince = (value) => {
+  if (!value) return "—";
+  try {
+    return new Date(value).toLocaleDateString("en-IN", {
+      month: "short",
+      year: "numeric",
+    });
+  } catch {
+    return String(value);
+  }
+};
+
+const formatDonationDate = (value) => {
+  if (!value) return "—";
+  try {
+    return new Date(value).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  } catch {
+    return String(value);
+  }
+};
 
 const Card = ({ children, className = "" }) => (
   <section className={`rounded-lg border border-slate-200 bg-white shadow-sm ${className}`}>
@@ -93,34 +74,175 @@ const SectionTitle = ({ icon, title }) => (
 const DetailRow = ({ label, value }) => (
   <div className="min-w-0">
     <p className="text-xs font-bold text-slate-600">{label}</p>
-    <p className="mt-1 break-words text-sm text-slate-700">{value}</p>
+    <p className="mt-1 break-words text-sm text-slate-700">{value || "—"}</p>
   </div>
 );
 
+const emptyProfile = {
+  fullName: "",
+  email: "",
+  phone: "",
+  address: "",
+  jobRole: "",
+  company: "",
+  experience: "",
+  location: "",
+  bankName: "",
+  maskedAccountNumber: "",
+  ifscCode: "",
+  accountType: "",
+  favoriteCause: "",
+  preferredMonthlyBudget: "",
+  anonymousDonation: false,
+  receiveUpdates: true,
+  memberSince: null,
+  profileImageUrl: "https://randomuser.me/api/portraits/men/32.jpg",
+  totalDonations: 0,
+  campaignsSupported: 0,
+};
+
 export default function UserDashboard() {
   const navigate = useNavigate();
+  const userId = getStoredUserId();
   const [isEditing, setIsEditing] = useState(false);
   const [showAllDonations, setShowAllDonations] = useState(false);
-  const storedDonations = JSON.parse(localStorage.getItem("userDonations")) || [];
-  const donations = storedDonations.length > 0 ? storedDonations : defaultDonations;
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [profile, setProfile] = useState(emptyProfile);
+  const [donations, setDonations] = useState([]);
+  const [editForm, setEditForm] = useState({
+    fullName: "",
+    phone: "",
+    address: "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  const loadDashboard = async () => {
+    if (!userId) {
+      setError("Please sign in to view your dashboard.");
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    try {
+      const [profileData, donationData] = await Promise.all([
+        backendApi.getProfile(userId),
+        backendApi.getUserDonations(userId),
+      ]);
+      setProfile({ ...emptyProfile, ...profileData });
+      setDonations(donationData || []);
+      setEditForm({
+        fullName: profileData.fullName || "",
+        phone: profileData.phone || "",
+        address: profileData.address || "",
+      });
+    } catch (err) {
+      setError(err.message || "Failed to load dashboard");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDashboard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
   const visibleDonations = showAllDonations ? donations : donations.slice(0, 4);
 
-  const totalDonations = useMemo(
-    () => donations.reduce((sum, donation) => sum + Number(donation.amount || 0), 0),
-    [donations]
-  );
+  const totalDonations = useMemo(() => {
+    if (profile.totalDonations != null) return Number(profile.totalDonations);
+    return donations.reduce((sum, d) => sum + Number(d.amount || 0), 0);
+  }, [profile.totalDonations, donations]);
 
-  const supportedCampaigns = useMemo(
-    () => new Set(donations.map((donation) => donation.campaignId)).size,
-    [donations]
-  );
+  const supportedCampaigns = useMemo(() => {
+    if (profile.campaignsSupported != null) return Number(profile.campaignsSupported);
+    return new Set(donations.map((d) => d.campaignId)).size;
+  }, [profile.campaignsSupported, donations]);
 
   const quickActions = [
-    { title: "Explore Campaigns", text: "Find and support new causes", icon: <Star size={16} />, action: () => navigate("/campaigns") },
-    { title: "Donation History", text: "View all your contributions", icon: <ClipboardList size={16} />, action: () => { setShowAllDonations(true); window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }); } },
-    { title: "Account Settings", text: "Manage your profile and security", icon: <Settings size={16} />, action: () => setIsEditing(true) },
-    { title: "Logout", text: "Sign out of your account", icon: <LogOut size={16} />, action: () => { localStorage.clear(); navigate("/loginSignup"); } },
+    {
+      title: "Explore Campaigns",
+      text: "Find and support new causes",
+      icon: <Star size={16} />,
+      action: () => navigate("/campaigns"),
+    },
+    {
+      title: "Donation History",
+      text: "View all your contributions",
+      icon: <ClipboardList size={16} />,
+      action: () => {
+        setShowAllDonations(true);
+        window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+      },
+    },
+    {
+      title: "Account Settings",
+      text: "Manage your profile and security",
+      icon: <Settings size={16} />,
+      action: () => setIsEditing(true),
+    },
+    {
+      title: "Logout",
+      text: "Sign out of your account",
+      icon: <LogOut size={16} />,
+      action: () => {
+        clearAuthSession();
+        navigate("/loginSignup");
+      },
+    },
   ];
+
+  const handleSaveProfile = async () => {
+    setSaving(true);
+    try {
+      const updated = await backendApi.updateProfile(userId, {
+        fullName: editForm.fullName,
+        phone: editForm.phone,
+        address: editForm.address,
+      });
+      setProfile((prev) => ({ ...prev, ...updated }));
+      const stored = JSON.parse(localStorage.getItem("user") || "{}");
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          ...stored,
+          name: updated.fullName,
+          email: updated.email || stored.email,
+        })
+      );
+      setIsEditing(false);
+    } catch (err) {
+      window.alert(err.message || "Failed to save profile");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-slate-50 px-4 py-20 text-center text-slate-500">
+        Loading your dashboard…
+      </main>
+    );
+  }
+
+  if (error && !profile.email) {
+    return (
+      <main className="min-h-screen bg-slate-50 px-4 py-20 text-center">
+        <p className="text-red-700">{error}</p>
+        <button
+          type="button"
+          onClick={() => navigate("/loginSignup")}
+          className="mt-6 rounded-md bg-teal-700 px-5 py-2 text-sm font-bold text-white"
+        >
+          Sign in
+        </button>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-800 sm:px-6 sm:py-8">
@@ -128,11 +250,12 @@ export default function UserDashboard() {
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-teal-700 sm:text-3xl">
-              Welcome back, {userProfile.name}! <span aria-hidden="true">👋</span>
+              Welcome back, {profile.fullName || "Donor"}!
             </h1>
             <p className="mt-2 text-base text-slate-600">
-              Here's what's happening with your donations and profile.
+              Here&apos;s what&apos;s happening with your donations and profile.
             </p>
+            {error ? <p className="mt-2 text-sm text-amber-700">{error}</p> : null}
           </div>
           <button
             onClick={() => setIsEditing(true)}
@@ -148,55 +271,75 @@ export default function UserDashboard() {
             <div className="flex flex-col items-center gap-8 sm:flex-row">
               <div className="rounded-full border-4 border-teal-700 p-1">
                 <img
-                  src={userProfile.avatar}
-                  alt={userProfile.name}
+                  src={
+                    profile.profileImageUrl ||
+                    "https://randomuser.me/api/portraits/men/32.jpg"
+                  }
+                  alt={profile.fullName}
                   className="h-36 w-36 rounded-full object-cover"
                 />
               </div>
               <div className="min-w-0 space-y-4">
-                <h2 className="break-words text-xl font-bold text-slate-900 sm:text-2xl">{userProfile.name}</h2>
+                <h2 className="break-words text-xl font-bold text-slate-900 sm:text-2xl">
+                  {profile.fullName}
+                </h2>
                 <p className="flex min-w-0 items-start gap-3 break-all text-sm text-slate-600 sm:text-base">
-                  <Mail size={17} className="text-slate-600" /> {userProfile.email}
+                  <Mail size={17} className="text-slate-600" /> {profile.email}
                 </p>
                 <p className="flex items-start gap-3 text-sm text-slate-600 sm:text-base">
-                  <Phone size={17} className="text-slate-600" /> {userProfile.phone}
+                  <Phone size={17} className="text-slate-600" /> {profile.phone || "—"}
                 </p>
                 <p className="flex items-start gap-3 text-sm text-slate-600 sm:text-base">
-                  <MapPin size={17} className="text-slate-600" /> {userProfile.address}
+                  <MapPin size={17} className="text-slate-600" /> {profile.address || "—"}
                 </p>
                 <span className="inline-flex items-center gap-2 rounded-md bg-teal-50 px-4 py-2 text-sm font-medium text-teal-700">
-                  <CalendarDays size={15} /> Member since {userProfile.memberSince}
+                  <CalendarDays size={15} /> Member since{" "}
+                  {formatMemberSince(profile.memberSince)}
                 </span>
               </div>
             </div>
           </Card>
 
           <Card className="p-8">
-            <IconBubble><Heart size={24} fill="currentColor" /></IconBubble>
+            <IconBubble>
+              <Heart size={24} fill="currentColor" />
+            </IconBubble>
             <p className="mt-7 text-sm font-bold text-slate-600">Total Donations</p>
-            <p className="mt-2 text-3xl font-bold text-teal-700">{formatCurrency(totalDonations || 500000)}</p>
-            <p className="mt-7 text-sm text-slate-600">Across all campaigns <span className="text-green-600">↗</span></p>
+            <p className="mt-2 text-3xl font-bold text-teal-700">
+              {formatCurrency(totalDonations)}
+            </p>
+            <p className="mt-7 text-sm text-slate-600">Across all campaigns</p>
           </Card>
 
           <Card className="p-8">
-            <IconBubble><Gift size={24} fill="currentColor" /></IconBubble>
+            <IconBubble>
+              <Gift size={24} fill="currentColor" />
+            </IconBubble>
             <p className="mt-7 text-sm font-bold text-slate-600">Campaigns Supported</p>
-            <p className="mt-2 text-3xl font-bold text-teal-700">{supportedCampaigns || 4}</p>
-            <p className="mt-7 text-sm text-slate-600">You're making impact <span className="text-green-600">↗</span></p>
+            <p className="mt-2 text-3xl font-bold text-teal-700">{supportedCampaigns}</p>
+            <p className="mt-7 text-sm text-slate-600">You&apos;re making impact</p>
           </Card>
 
           <Card className="p-8">
-            <IconBubble><Star size={24} fill="currentColor" /></IconBubble>
+            <IconBubble>
+              <Star size={24} fill="currentColor" />
+            </IconBubble>
             <p className="mt-7 text-sm font-bold text-slate-600">Favorite Cause</p>
-            <p className="mt-2 text-2xl font-bold text-teal-700">{userProfile.favoriteCause}</p>
-            <p className="mt-7 text-sm text-slate-600">Your top priority <span className="text-rose-500">♥</span></p>
+            <p className="mt-2 text-2xl font-bold text-teal-700">
+              {profile.favoriteCause || "—"}
+            </p>
+            <p className="mt-7 text-sm text-slate-600">Your top priority</p>
           </Card>
 
           <Card className="p-8">
-            <IconBubble><CalendarDays size={24} /></IconBubble>
+            <IconBubble>
+              <CalendarDays size={24} />
+            </IconBubble>
             <p className="mt-7 text-sm font-bold text-slate-600">Member Since</p>
-            <p className="mt-2 text-2xl font-bold text-teal-700">{userProfile.memberSince}</p>
-            <p className="mt-7 text-sm text-slate-600">1 month with us <span className="text-amber-500">☺</span></p>
+            <p className="mt-2 text-2xl font-bold text-teal-700">
+              {formatMemberSince(profile.memberSince)}
+            </p>
+            <p className="mt-7 text-sm text-slate-600">Glad you&apos;re here</p>
           </Card>
         </div>
 
@@ -204,30 +347,30 @@ export default function UserDashboard() {
           <Card className="p-7">
             <SectionTitle icon={<User size={24} fill="currentColor" />} title="Personal Information" />
             <div className="space-y-4">
-              <DetailRow label="Full Name" value={userProfile.name} />
-              <DetailRow label="Email" value={userProfile.email} />
-              <DetailRow label="Phone" value={userProfile.phone} />
-              <DetailRow label="Address" value={userProfile.address} />
+              <DetailRow label="Full Name" value={profile.fullName} />
+              <DetailRow label="Email" value={profile.email} />
+              <DetailRow label="Phone" value={profile.phone} />
+              <DetailRow label="Address" value={profile.address} />
             </div>
           </Card>
 
           <Card className="p-7">
             <SectionTitle icon={<BriefcaseBusiness size={24} />} title="Job Details" />
             <div className="space-y-4">
-              <DetailRow label="Role" value={userProfile.role} />
-              <DetailRow label="Company" value={userProfile.company} />
-              <DetailRow label="Experience" value={userProfile.experience} />
-              <DetailRow label="Location" value="Hyderabad, India" />
+              <DetailRow label="Role" value={profile.jobRole} />
+              <DetailRow label="Company" value={profile.company} />
+              <DetailRow label="Experience" value={profile.experience} />
+              <DetailRow label="Location" value={profile.location} />
             </div>
           </Card>
 
           <Card className="p-7">
             <SectionTitle icon={<Landmark size={24} />} title="Bank Details" />
             <div className="space-y-4">
-              <DetailRow label="Bank Name" value={userProfile.bankName} />
-              <DetailRow label="Account Number" value={userProfile.accountNumber} />
-              <DetailRow label="IFSC Code" value={userProfile.ifsc} />
-              <DetailRow label="Account Type" value={userProfile.accountType} />
+              <DetailRow label="Bank Name" value={profile.bankName} />
+              <DetailRow label="Account Number" value={profile.maskedAccountNumber} />
+              <DetailRow label="IFSC Code" value={profile.ifscCode} />
+              <DetailRow label="Account Type" value={profile.accountType} />
             </div>
           </Card>
 
@@ -237,20 +380,38 @@ export default function UserDashboard() {
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <p className="text-sm font-bold text-slate-600">Causes Interested In</p>
                 <span className="rounded-md bg-teal-50 px-4 py-2 text-sm font-medium text-teal-700">
-                  {userProfile.favoriteCause}
+                  {profile.favoriteCause || "—"}
                 </span>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <p className="text-sm font-bold text-slate-600">Preferred Monthly Budget</p>
-                <p className="text-sm text-slate-700">{userProfile.monthlyBudget}</p>
+                <p className="text-sm text-slate-700">
+                  {profile.preferredMonthlyBudget || "—"}
+                </p>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <p className="text-sm font-bold text-slate-600">Anonymous Donation</p>
-                <p className="flex items-center gap-2 text-sm text-slate-700"><CheckCircle size={16} className="text-green-600" /> Yes</p>
+                <p className="flex items-center gap-2 text-sm text-slate-700">
+                  {profile.anonymousDonation ? (
+                    <>
+                      <CheckCircle size={16} className="text-green-600" /> Yes
+                    </>
+                  ) : (
+                    "No"
+                  )}
+                </p>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <p className="text-sm font-bold text-slate-600">Receive Updates</p>
-                <p className="flex items-center gap-2 text-sm text-slate-700"><CheckCircle size={16} className="text-green-600" /> Yes</p>
+                <p className="flex items-center gap-2 text-sm text-slate-700">
+                  {profile.receiveUpdates ? (
+                    <>
+                      <CheckCircle size={16} className="text-green-600" /> Yes
+                    </>
+                  ) : (
+                    "No"
+                  )}
+                </p>
               </div>
             </div>
           </Card>
@@ -260,7 +421,10 @@ export default function UserDashboard() {
           <Card className="p-6">
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <SectionTitle icon={<ClipboardList size={24} />} title="Recent Donations" />
-              <button onClick={() => setShowAllDonations((current) => !current)} className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">
+              <button
+                onClick={() => setShowAllDonations((current) => !current)}
+                className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+              >
                 {showAllDonations ? "Show Recent" : "View All Donations"}
               </button>
             </div>
@@ -277,25 +441,38 @@ export default function UserDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white">
-                  {visibleDonations.map((donation, index) => {
-                    const detail = campaignDetails[donation.campaignId] || campaignDetails[1];
-                    return (
-                      <tr key={`${donation.campaignId}-${index}`}>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-4">
-                            <img src={detail.image} alt={detail.campaign} className="h-12 w-16 rounded object-cover" />
-                            <span className="font-medium text-slate-700">{detail.campaign}</span>
-                          </div>
+                  {visibleDonations.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
+                        No donations yet. Explore campaigns to get started.
+                      </td>
+                    </tr>
+                  ) : (
+                    visibleDonations.map((donation) => (
+                      <tr key={donation.donationId || `${donation.campaignId}-${donation.donatedAt}`}>
+                        <td className="px-4 py-3 font-medium text-slate-700">
+                          {donation.campaignTitle || "Campaign"}
+                          {donation.recipientName ? (
+                            <span className="mt-1 block text-xs text-slate-500">
+                              for {donation.recipientName}
+                            </span>
+                          ) : null}
                         </td>
-                        <td className="px-4 py-3 text-slate-700">{detail.cause}</td>
-                        <td className="px-4 py-3 font-medium text-slate-700">{formatCurrency(donation.amount)}</td>
-                        <td className="px-4 py-3 text-slate-700">{donation.date}</td>
+                        <td className="px-4 py-3 text-slate-700">{donation.cause || "—"}</td>
+                        <td className="px-4 py-3 font-medium text-slate-700">
+                          {formatCurrency(donation.amount)}
+                        </td>
+                        <td className="px-4 py-3 text-slate-700">
+                          {formatDonationDate(donation.donatedAt)}
+                        </td>
                         <td className="px-4 py-3">
-                          <span className="rounded-md bg-green-100 px-3 py-1 text-xs font-medium text-green-700">Success</span>
+                          <span className="rounded-md bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
+                            {donation.status || "SUCCESS"}
+                          </span>
                         </td>
                       </tr>
-                    );
-                  })}
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -332,12 +509,44 @@ export default function UserDashboard() {
           <Card className="w-full max-w-md p-6">
             <h2 className="text-xl font-bold text-teal-700">Edit Profile</h2>
             <div className="mt-5 space-y-4">
-              {["Full Name", "Email", "Phone", "Address"].map((label) => (
-                <label key={label} className="block text-sm font-bold text-slate-600">
-                  {label}
-                  <input className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 font-normal" defaultValue={label === "Full Name" ? userProfile.name : label === "Email" ? userProfile.email : label === "Phone" ? userProfile.phone : userProfile.address} />
-                </label>
-              ))}
+              <label className="block text-sm font-bold text-slate-600">
+                Full Name
+                <input
+                  className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 font-normal"
+                  value={editForm.fullName}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, fullName: e.target.value }))
+                  }
+                />
+              </label>
+              <label className="block text-sm font-bold text-slate-600">
+                Email
+                <input
+                  className="mt-2 w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 font-normal"
+                  value={profile.email}
+                  disabled
+                />
+              </label>
+              <label className="block text-sm font-bold text-slate-600">
+                Phone
+                <input
+                  className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 font-normal"
+                  value={editForm.phone}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, phone: e.target.value }))
+                  }
+                />
+              </label>
+              <label className="block text-sm font-bold text-slate-600">
+                Address
+                <input
+                  className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 font-normal"
+                  value={editForm.address}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, address: e.target.value }))
+                  }
+                />
+              </label>
             </div>
             <div className="mt-6 flex justify-end gap-3">
               <button
@@ -347,13 +556,11 @@ export default function UserDashboard() {
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  setIsEditing(false);
-                  window.alert("Profile changes saved.");
-                }}
-                className="rounded-md bg-teal-700 px-5 py-2 text-sm font-bold text-white hover:bg-teal-800"
+                onClick={handleSaveProfile}
+                disabled={saving}
+                className="rounded-md bg-teal-700 px-5 py-2 text-sm font-bold text-white hover:bg-teal-800 disabled:opacity-60"
               >
-                Save Changes
+                {saving ? "Saving…" : "Save Changes"}
               </button>
             </div>
           </Card>

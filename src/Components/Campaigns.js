@@ -1,12 +1,34 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import campaigns from "./campaignData";
+import backendApi from "../services/backendApi";
 
 const getFallbackImage = (id) =>
   `https://picsum.photos/seed/fundraising-campaign-${id}/1000/600`;
 
 const Campaigns = () => {
   const navigate = useNavigate();
+  const [campaigns, setCampaigns] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const data = await backendApi.getCampaigns();
+        if (!cancelled) setCampaigns(data);
+      } catch (err) {
+        if (!cancelled) setError(err.message || "Failed to load campaigns");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-8 sm:p-10">
@@ -17,9 +39,28 @@ const Campaigns = () => {
         Support causes that make a difference. Select a campaign to learn more.
       </p>
 
+      {loading && (
+        <p className="py-16 text-center text-slate-500">Loading campaigns…</p>
+      )}
+
+      {!loading && error && (
+        <div className="mx-auto max-w-lg rounded-xl border border-red-200 bg-red-50 p-6 text-center text-red-800">
+          <p className="font-semibold">{error}</p>
+          <p className="mt-2 text-sm">
+            Make sure the Spring Boot API is running on http://localhost:8080
+          </p>
+        </div>
+      )}
+
+      {!loading && !error && campaigns.length === 0 && (
+        <p className="py-16 text-center text-slate-500">No active campaigns yet.</p>
+      )}
+
       <div className="grid grid-cols-1 gap-6 sm:gap-8 md:grid-cols-2 lg:grid-cols-3">
         {campaigns.map((camp) => {
-          const progress = Math.round((camp.raised / camp.goal) * 100);
+          const progress =
+            camp.fundedPercentage ??
+            Math.round((camp.raised / Math.max(camp.goal, 1)) * 100);
 
           return (
             <article
@@ -40,7 +81,9 @@ const Campaigns = () => {
 
               <div className="flex flex-1 flex-col p-5 sm:p-6">
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <h2 className="min-w-0 flex-1 text-lg font-bold text-gray-800 sm:text-xl">{camp.title}</h2>
+                  <h2 className="min-w-0 flex-1 text-lg font-bold text-gray-800 sm:text-xl">
+                    {camp.title}
+                  </h2>
                   <span className="shrink-0 rounded-full bg-[#007A8E] px-3 py-1 text-xs font-semibold text-white">
                     {camp.category}
                   </span>

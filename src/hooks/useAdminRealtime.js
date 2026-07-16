@@ -3,7 +3,7 @@ import platformApi from "../services/platformApi";
 
 export function useAdminRealtime({ onDonation, onSecurity, onPaymentsUpdate, enabled = true }) {
   const [connected, setConnected] = useState(false);
-  const [infra, setInfra] = useState({ redis: "memory", rabbitmq: "memory", api: false });
+  const [infra, setInfra] = useState({ redis: "jpa", rabbitmq: "jpa", api: false });
   const wsRef = useRef(null);
   const retryRef = useRef(null);
 
@@ -11,13 +11,18 @@ export function useAdminRealtime({ onDonation, onSecurity, onPaymentsUpdate, ena
     try {
       const health = await platformApi.health();
       setInfra({
-        redis: health.redis,
-        rabbitmq: health.rabbitmq,
-        api: health.ok,
+        redis: health.redis || "jpa",
+        rabbitmq: health.rabbitmq || "jpa",
+        api: Boolean(health.ok),
       });
+      // Without a dedicated WS server, treat a healthy admin API as "connected"
+      if (!platformApi.ws) {
+        setConnected(Boolean(health.ok));
+      }
       return health;
     } catch {
       setInfra({ redis: "offline", rabbitmq: "offline", api: false });
+      if (!platformApi.ws) setConnected(false);
       return null;
     }
   }, []);
@@ -26,6 +31,11 @@ export function useAdminRealtime({ onDonation, onSecurity, onPaymentsUpdate, ena
     if (!enabled) return undefined;
 
     refreshHealth();
+    const healthTimer = setInterval(refreshHealth, 15000);
+
+    if (!platformApi.ws) {
+      return () => clearInterval(healthTimer);
+    }
 
     const connect = () => {
       try {
@@ -66,6 +76,7 @@ export function useAdminRealtime({ onDonation, onSecurity, onPaymentsUpdate, ena
     connect();
 
     return () => {
+      clearInterval(healthTimer);
       if (retryRef.current) clearTimeout(retryRef.current);
       if (wsRef.current) wsRef.current.close();
     };

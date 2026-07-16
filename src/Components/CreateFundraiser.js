@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import backendApi from "../services/backendApi";
 
 const DEFAULT_PREVIEW_IMAGE =
   "https://images.unsplash.com/photo-1531746790731-6c087fecd65a?auto=format&fit=crop&w=1600&q=80";
@@ -20,6 +21,7 @@ const CreateFundraiser = () => {
   const user = getStoredUser();
 
   const [preview, setPreview] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const [form, setForm] = useState({
     title: "",
@@ -29,13 +31,13 @@ const CreateFundraiser = () => {
     beneficiary: "",
     description: "",
     creator: user.name || "",
-    image: ""
+    image: "",
   });
 
   const handleChange = (e) => {
     setForm((currentForm) => ({
       ...currentForm,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     }));
   };
 
@@ -51,7 +53,7 @@ const CreateFundraiser = () => {
 
       setForm((currentForm) => ({
         ...currentForm,
-        image: reader.result
+        image: reader.result,
       }));
     };
 
@@ -64,35 +66,40 @@ const CreateFundraiser = () => {
     setForm((f) => ({ ...f, image }));
   }, [location?.state?.image]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitting(true);
 
-    const campaigns =
-      JSON.parse(
-        localStorage.getItem(
-          "userFunds"
-        )
-      ) || [];
+    try {
+      const created = await backendApi.createCampaign({
+        title: form.title,
+        cause: form.category,
+        description: form.description,
+        shortDescription: form.description?.slice(0, 180),
+        imageUrl: form.image?.startsWith("data:") ? DEFAULT_PREVIEW_IMAGE : form.image,
+        goalAmount: Number(form.goalAmount),
+        duration: form.endDate ? `Until ${form.endDate}` : "Open",
+        beneficiaries: form.beneficiary || form.creator || "Community",
+      });
 
-    campaigns.push({
-      id: Date.now(),
-      ...form,
-      raised: 0,
-      status: "Pending Review",
-      createdAt:
-        new Date().toLocaleString()
-    });
+      // Keep a local copy for admin pending-review UI if needed
+      const localFunds = JSON.parse(localStorage.getItem("userFunds") || "[]");
+      localFunds.push({
+        id: created.id,
+        ...form,
+        raised: 0,
+        status: "Active",
+        createdAt: new Date().toLocaleString(),
+      });
+      localStorage.setItem("userFunds", JSON.stringify(localFunds));
 
-    localStorage.setItem(
-      "userFunds",
-      JSON.stringify(campaigns)
-    );
-
-    alert(
-      "Fundraiser submitted successfully. It will appear in the admin dashboard for review."
-    );
-
-    navigate("/campaigns");
+      alert("Fundraiser created successfully and is now live.");
+      navigate(`/campaigns/${created.id}`);
+    } catch (err) {
+      alert(err.message || "Failed to create fundraiser. Is the API running?");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -246,9 +253,11 @@ const CreateFundraiser = () => {
               </div>
 
               <button
-                className="w-full bg-teal-700 text-white py-4 rounded-lg hover:bg-teal-800"
+                type="submit"
+                disabled={submitting}
+                className="w-full rounded-lg bg-teal-700 py-4 text-white hover:bg-teal-800 disabled:opacity-60"
               >
-                Launch Fundraiser
+                {submitting ? "Creating…" : "Launch Fundraiser"}
               </button>
 
             </form>

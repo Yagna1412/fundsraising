@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { ChevronDown, Mail, MapPin, Menu, Phone, X } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { clearAuthSession } from "../services/backendApi";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -17,7 +18,7 @@ const Navbar = () => {
   };
 
   const handleLogout = () => {
-    localStorage.clear();
+    clearAuthSession();
     closeMenu();
     navigate("/loginSignup");
   };

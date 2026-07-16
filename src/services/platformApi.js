@@ -1,54 +1,75 @@
-const API_BASE = process.env.REACT_APP_PLATFORM_API || "http://localhost:4000";
-const WS_BASE = process.env.REACT_APP_PLATFORM_WS || "ws://localhost:4000/ws";
+import { getAccessToken } from "../auth/keycloakAuth";
+
+/** Admin APIs now live on Spring Boot under /api/admin */
+const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:8080/api";
+const WS_BASE = process.env.REACT_APP_PLATFORM_WS || "";
+
+function authHeaders(extra = {}) {
+  const headers = { ...extra };
+  const token = getAccessToken();
+  if (token && token.includes(".")) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  return headers;
+}
+
+async function request(path, options = {}) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: authHeaders({
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    let message = `Request failed (${response.status})`;
+    try {
+      const data = JSON.parse(text);
+      message = data.message || message;
+    } catch {
+      if (text) message = text;
+    }
+    throw new Error(message);
+  }
+
+  return response.json();
+}
 
 export const platformApi = {
   base: API_BASE,
   ws: WS_BASE,
 
   async health() {
-    const res = await fetch(`${API_BASE}/api/health`);
-    if (!res.ok) throw new Error("Platform API unavailable");
-    return res.json();
+    return request("/admin/health");
   },
 
   async getReports(period) {
-    const res = await fetch(`${API_BASE}/api/reports/${period}`);
-    if (!res.ok) throw new Error("Failed to load reports");
-    return res.json();
+    return request(`/admin/reports/${period}`);
   },
 
   async getPayments() {
-    const res = await fetch(`${API_BASE}/api/payments`);
-    if (!res.ok) throw new Error("Failed to load payments");
-    return res.json();
+    return request("/admin/payments");
   },
 
   async getUserProfiles() {
-    const res = await fetch(`${API_BASE}/api/users/profiles`);
-    if (!res.ok) throw new Error("Failed to load profiles");
-    return res.json();
+    return request("/admin/users/profiles");
   },
 
   async getSecurityEvents() {
-    const res = await fetch(`${API_BASE}/api/security/events`);
-    if (!res.ok) throw new Error("Failed to load security events");
-    return res.json();
+    return request("/admin/security/events");
   },
 
   async logSecurityEvent(event) {
-    const res = await fetch(`${API_BASE}/api/security/events`, {
+    return request("/admin/security/events", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(event),
+      body: JSON.stringify(event || {}),
     });
-    if (!res.ok) throw new Error("Failed to log event");
-    return res.json();
   },
 
   async simulateDonation() {
-    const res = await fetch(`${API_BASE}/api/donations/simulate`, { method: "POST" });
-    if (!res.ok) throw new Error("Simulation failed");
-    return res.json();
+    return request("/admin/donations/simulate", { method: "POST", body: "{}" });
   },
 };
 

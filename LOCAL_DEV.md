@@ -1,58 +1,119 @@
 # MyFundraiser — local development
 
-## Chrome “Change your password” popup
+## Stack overview
 
-That dialog is from **Google Password Manager**, not MyFundraiser. It appears when you use passwords known from public data breaches (for example old `admin123`).
+| Service | Port | Role |
+|---------|------|------|
+| React frontend | `3000` | UI |
+| Spring Boot API | `8080` | Campaigns, donations, profile, **admin APIs** |
+| Keycloak | `8081` | Login / JWT issuer |
+| MySQL | `3306` | App database |
 
-**Fix:** use the updated demo credentials on the login page (filled via the **User demo** / **Admin demo** buttons):
+Admin realtime WebSocket (old Node `:4000`) is optional; admin data now comes from Spring Boot.
 
-| Role  | Email                   | Password                 |
-|-------|-------------------------|--------------------------|
-| User  | user@myfundraiser.com   | `MyFundraiser#User2026`  |
-| Admin | admin@myfundraiser.com  | `MyFundraiser#Admin2026` |
+## 1. Start MySQL
 
-You can dismiss the Chrome popup with **OK** — it does not block the app.
+Ensure MySQL is running (database `Funds` is created automatically).
 
-## Run everything locally
+## 2. Start Keycloak (optional but recommended)
 
-### 1. Install dependencies
+### Option A — without Docker (already installed)
+
+Keycloak is installed at `C:\Users\yagna\keycloak\keycloak-26.7.0`.
+
+Start it anytime:
+```powershell
+cd d:\desktop\fullstackproject\my-project
+.\start-keycloak.ps1
+```
+
+Or manually:
+```powershell
+$env:KEYCLOAK_ADMIN="admin"
+$env:KEYCLOAK_ADMIN_PASSWORD="admin"
+cd C:\Users\yagna\keycloak\keycloak-26.7.0
+.\bin\kc.bat start-dev --http-port=8081 --hostname-strict=false --import-realm
+```
+
+Then restart Spring Boot (Keycloak is enabled in `application.properties`):
+```powershell
+cd C:\Users\yagna\IdeaProjects\fullstack
+mvn spring-boot:run
+```
+
+### Option B — Docker
+
+Requires **Docker Desktop**. From `d:\desktop\fullstackproject\my-project`:
+
+```bash
+docker compose up -d keycloak
+```
+
+Without Keycloak running, set `app.keycloak.enabled=false` so the API can start and use local login.
+
+- Console: http://localhost:8081  
+- Realm: `myfundraiser` (imported from `keycloak/realm-myfundraiser.json`)  
+- Client: `myfundraiser-frontend`  
+- Demo users: `user@myfundraiser.com` / `MyFundraiser#User2026`, `admin@myfundraiser.com` / `MyFundraiser#Admin2026`
+
+## 3. Start Spring Boot
+
+From `c:\Users\yagna\IdeaProjects\fullstack`:
+
+**Without Keycloak (default):**
+```bash
+mvn spring-boot:run
+```
+
+**With Keycloak JWT enforcement:**
+```bash
+mvn spring-boot:run -Dspring-boot.run.profiles=keycloak
+```
+
+API: **http://localhost:8080/api**
+
+### Admin endpoints (require Keycloak JWT with role `ADMIN`)
+
+| Method | Path |
+|--------|------|
+| GET | `/api/admin/health` |
+| GET | `/api/admin/reports/{daily\|weekly\|monthly}` |
+| GET | `/api/admin/payments` |
+| GET | `/api/admin/users/profiles` |
+| GET/POST | `/api/admin/security/events` |
+| POST | `/api/admin/donations/simulate` |
+
+### Auth
+
+| Method | Path | Notes |
+|--------|------|--------|
+| POST | `/api/auth/sync` | Upserts local user from Keycloak JWT (Bearer required) |
+| POST | `/api/auth/register` | Local DB register (still available) |
+| POST | `/api/auth/login` | Legacy password login (no JWT) |
+
+## 4. Start React
 
 ```bash
 npm install
+npm start
 ```
 
-### 2. (Optional) Redis + RabbitMQ via Docker
+App: **http://localhost:3000**
 
-```bash
-npm run infra
+## Demo credentials (Keycloak + seeded MySQL)
+
+| Role  | Email                   | Password                 |
+|-------|-------------------------|--------------------------|
+| User  | `user@myfundraiser.com`   | `MyFundraiser#User2026`  |
+| Admin | `admin@myfundraiser.com`  | `MyFundraiser#Admin2026` |
+
+Login flow: React → Keycloak password grant → JWT stored → `POST /api/auth/sync` → redirect.
+
+## Env vars
+
 ```
-
-Management UI: http://localhost:15672 (user `fundraiser`, password `fundraiser`)
-
-If Docker is not running, the platform server still works using in-memory fallbacks.
-
-### 3. Start API + React together
-
-```bash
-npm run dev
+REACT_APP_API_URL=http://localhost:8080/api
+REACT_APP_KEYCLOAK_URL=http://localhost:8081
+REACT_APP_KEYCLOAK_REALM=myfundraiser
+REACT_APP_KEYCLOAK_CLIENT_ID=myfundraiser-frontend
 ```
-
-- React app: http://localhost:3000  
-- Platform API + WebSocket: http://localhost:4000 (`ws://localhost:4000/ws`)
-
-### Or run separately
-
-```bash
-npm run server   # terminal 1
-npm start        # terminal 2
-```
-
-## Admin dashboard sections
-
-- **Reports** — Daily / Weekly / Monthly tabs (API + Redis cache)
-- **Payments** — Settlement table, live updates via WebSocket
-- **User Profiles** — Split view profile explorer
-- **Security** — Audit log + 2FA/API/session cards
-- **Realtime bar** — WebSocket, Redis, and RabbitMQ status
-
-Live donations are simulated every ~12 seconds and pushed through RabbitMQ (or memory queue) to the admin UI.
