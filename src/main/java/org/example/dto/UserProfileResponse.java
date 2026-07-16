@@ -1,44 +1,26 @@
-package org.example.entity;
+package org.example.dto;
 
 
 
-import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
-@Entity
-@Table(name = "users")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User {
+public class UserProfileResponse {
 
-    @Id
-    @GeneratedValue(
-            strategy = GenerationType.IDENTITY
-    )
     private Long id;
 
-    @Column(nullable = false)
     private String fullName;
 
-    @Column(
-            nullable = false,
-            unique = true
-    )
     private String email;
 
     private String phone;
-
-    @Column(nullable = false)
-    private String password;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Role role;
 
     private String profileImageUrl;
 
@@ -54,7 +36,7 @@ public class User {
 
     private String bankName;
 
-    private String accountNumber;
+    private String maskedAccountNumber;
 
     private String ifscCode;
 
@@ -70,10 +52,8 @@ public class User {
 
     private LocalDate memberSince;
 
-    public enum Role {
+    private BigDecimal totalDonations;
 
-        USER,
-        ADMIN
+    private long campaignsSupported;
 
-    }
 }
