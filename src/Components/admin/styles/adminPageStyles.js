@@ -74,7 +74,6 @@ const adminPageStyles = `
   .admin-content-area { width: 100%; max-width: none; }
   .admin-page section.rounded-lg {
     border-radius: 16px;
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
   }
 `;
 

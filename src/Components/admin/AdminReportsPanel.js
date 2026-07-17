@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { BarChart3, CircleDollarSign, Download, Inbox } from "lucide-react";
 import platformApi from "../../services/platformApi";
 
@@ -17,6 +17,88 @@ const StatCard = ({ icon: Icon, label, value, note, tone = "teal" }) => {
       <p className="text-sm font-semibold text-slate-500">{label}</p>
       <p className="mt-2 text-2xl font-bold text-slate-950">{value}</p>
       {note && <p className="mt-2 text-xs font-semibold text-green-600">{note}</p>}
+    </div>
+  );
+};
+
+/** Professional vertical column chart for donation counts */
+const DonationVolumeChart = ({ labels = [], donations = [] }) => {
+  const maxValue = Math.max(...donations.map(Number), 1);
+  const yTicks = useMemo(() => {
+    const top = Math.ceil(maxValue);
+    const step = Math.max(1, Math.ceil(top / 4));
+    const ticks = [];
+    for (let v = top; v >= 0; v -= step) ticks.push(v);
+    if (ticks[ticks.length - 1] !== 0) ticks.push(0);
+    return ticks;
+  }, [maxValue]);
+
+  const total = donations.reduce((sum, n) => sum + Number(n || 0), 0);
+  const peakIndex = donations.reduce(
+    (best, n, i) => (Number(n) > Number(donations[best] || 0) ? i : best),
+    0
+  );
+
+  return (
+    <div>
+      <div className="mb-4 flex flex-wrap items-center gap-4 text-xs font-semibold text-slate-500">
+        <span>
+          Total <span className="font-bold text-slate-800">{total}</span> donations
+        </span>
+        {labels[peakIndex] != null && (
+          <span>
+            Peak <span className="font-bold text-violet-700">{labels[peakIndex]}</span>
+            {" · "}
+            <span className="font-bold text-slate-800">{donations[peakIndex]}</span>
+          </span>
+        )}
+      </div>
+
+      <div className="relative h-64 rounded-xl border border-slate-100 bg-gradient-to-b from-slate-50 to-white px-3 pb-8 pt-4 sm:px-4">
+        {/* Y-axis grid */}
+        <div className="pointer-events-none absolute inset-x-3 bottom-8 top-4 flex flex-col justify-between sm:inset-x-4">
+          {yTicks.map((tick) => (
+            <div key={tick} className="flex items-center gap-2">
+              <span className="w-5 shrink-0 text-right text-[10px] font-bold text-slate-400">{tick}</span>
+              <div className="h-px flex-1 border-t border-dashed border-slate-200" />
+            </div>
+          ))}
+        </div>
+
+        {/* Bars */}
+        <div
+          className="relative z-10 ml-7 flex h-full items-end gap-2 sm:gap-3"
+          style={{ height: "calc(100% - 0.5rem)" }}
+        >
+          {labels.map((label, index) => {
+            const value = Number(donations[index] || 0);
+            const heightPct = Math.max(value === 0 ? 0 : 6, (value / maxValue) * 100);
+            const isPeak = index === peakIndex && value > 0;
+
+            return (
+              <div key={`${label}-${index}`} className="group flex h-full min-w-0 flex-1 flex-col items-center justify-end">
+                <span
+                  className={`mb-1 text-[10px] font-bold transition ${
+                    isPeak ? "text-violet-700" : "text-slate-500 opacity-0 group-hover:opacity-100"
+                  }`}
+                >
+                  {value}
+                </span>
+                <div
+                  className={`w-full max-w-[42px] rounded-t-lg transition-all duration-300 ${
+                    isPeak
+                      ? "bg-gradient-to-t from-violet-700 to-violet-400 shadow-md shadow-violet-200"
+                      : "bg-gradient-to-t from-violet-500 to-violet-300 group-hover:from-violet-600 group-hover:to-violet-400"
+                  }`}
+                  style={{ height: `${heightPct}%`, minHeight: value > 0 ? "8px" : "0px" }}
+                  title={`${label}: ${value} donations`}
+                />
+                <span className="mt-2 max-w-full truncate text-[10px] font-bold text-slate-500">{label}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 };
@@ -143,26 +225,22 @@ const AdminReportsPanel = ({ onExport }) => {
         </section>
 
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-5 font-bold text-slate-900">Donation volume</h2>
+          <div className="mb-1 flex items-center justify-between">
+            <h2 className="font-bold text-slate-900">Donation volume</h2>
+            <span className="rounded-full bg-violet-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-violet-700">
+              Count by period
+            </span>
+          </div>
+          <p className="mb-5 text-xs font-semibold text-slate-500">
+            Number of donations received in each period
+          </p>
           {loading ? (
             <div className="h-64 animate-pulse rounded-lg bg-slate-100" />
           ) : (
-            <div className="space-y-3">
-              {(report?.labels || []).map((label, index) => (
-                <div key={label} className="flex items-center gap-3">
-                  <span className="w-16 shrink-0 text-xs font-bold text-slate-500">{label}</span>
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200">
-                    <div
-                      className="h-2 rounded-full bg-violet-500"
-                      style={{
-                        width: `${Math.max(8, (report.donations[index] / Math.max(...report.donations, 1)) * 100)}%`,
-                      }}
-                    />
-                  </div>
-                  <span className="w-8 text-right text-xs font-bold text-slate-700">{report.donations[index]}</span>
-                </div>
-              ))}
-            </div>
+            <DonationVolumeChart
+              labels={report?.labels || []}
+              donations={report?.donations || []}
+            />
           )}
         </section>
       </div>

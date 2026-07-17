@@ -908,7 +908,7 @@ export default function AdminDashboard() {
   );
 
   const renderCampaigns = () => (
-    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="bg-transparent p-0">
       <div className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-4">
         <StatCard icon={Home} label="All Campaigns" value={campaignsState.length} note="Admin managed campaigns" tone="blue" />
         <StatCard icon={CheckCircle} label="Active" value={campaignsState.filter((item) => item.status === "Active").length} note="Currently accepting funds" tone="teal" />
@@ -1027,7 +1027,7 @@ export default function AdminDashboard() {
   );
 
   const renderDonations = () => (
-    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="bg-transparent p-0">
       <Toolbar placeholder="Search donations..." searchValue={donationSearch} onSearchChange={setDonationSearch}>
         <FilterSelect
           label="Filter by donation status"
@@ -1103,7 +1103,7 @@ export default function AdminDashboard() {
   );
 
   const renderDonors = () => (
-    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="bg-transparent p-0">
       <div className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-4">
         <StatCard icon={Users} label="Total Users" value={userStats.total} note="All registered donors" tone="violet" />
         <StatCard icon={CheckCircle} label="Active Users" value={userStats.active} note="Recently engaged" tone="teal" />

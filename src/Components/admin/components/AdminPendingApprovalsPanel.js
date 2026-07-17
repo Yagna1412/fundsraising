@@ -52,7 +52,7 @@ const ApprovalCard = ({ item, onApprove, onReject, onViewDocs, showDocs, compact
   </article>
 );
 
-const panelShell = "dashboard-panel w-full rounded-2xl border border-white/70 bg-white/55 p-4 shadow-sm backdrop-blur-md sm:p-5";
+const panelShell = "w-full bg-transparent p-0";
 
 const AdminPendingApprovalsPanel = ({ items = [], onViewAll, onApprove, onReject, onViewDocs }) => (
   <section className={panelShell}>
