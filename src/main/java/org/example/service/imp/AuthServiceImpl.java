@@ -64,7 +64,11 @@ public class AuthServiceImpl
                         )
                 )
 
-                .role(User.Role.USER)
+                .role(
+                        request.getRole() != null
+                                ? request.getRole()
+                                : User.Role.USER
+                )
 
                 .memberSince(
                         LocalDate.now()

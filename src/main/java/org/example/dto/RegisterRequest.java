@@ -5,6 +5,7 @@ package org.example.dto;
 import jakarta.validation.constraints.*;
 
         import lombok.Data;
+import org.example.entity.User;
 
 @Data
 public class RegisterRequest {
@@ -21,5 +22,7 @@ public class RegisterRequest {
     @Size(min = 8)
     @NotBlank
     private String password;
+
+    private User.Role role;
 
 }
