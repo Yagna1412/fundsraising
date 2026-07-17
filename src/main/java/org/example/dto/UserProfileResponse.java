@@ -14,7 +14,7 @@ import java.time.LocalDate;
 @Builder
 public class UserProfileResponse {
 
-    private Long id;
+    private String id;
 
     private String fullName;
 

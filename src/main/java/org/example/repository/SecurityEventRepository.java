@@ -1,11 +1,11 @@
 package org.example.repository;
 
 import org.example.entity.SecurityEvent;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
 
 import java.util.List;
 
-public interface SecurityEventRepository extends JpaRepository<SecurityEvent, Long> {
+public interface SecurityEventRepository extends MongoRepository<SecurityEvent, String> {
 
     List<SecurityEvent> findTop50ByOrderByCreatedAtDesc();
 }

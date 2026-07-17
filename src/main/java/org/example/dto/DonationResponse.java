@@ -1,10 +1,8 @@
 package org.example.dto;
 
-
-
 import lombok.*;
 
-        import java.math.BigDecimal;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Getter
@@ -14,9 +12,9 @@ import java.time.LocalDateTime;
 @Builder
 public class DonationResponse {
 
-    private Long donationId;
+    private String donationId;
 
-    private Long campaignId;
+    private String campaignId;
 
     private String campaignTitle;
 
@@ -31,5 +29,4 @@ public class DonationResponse {
     private String status;
 
     private String message;
-
 }

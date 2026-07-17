@@ -20,7 +20,7 @@ public class UserController {
     getProfile(
 
             @PathVariable
-            Long userId
+            String userId
 
     ) {
 
@@ -36,7 +36,7 @@ public class UserController {
     updateProfile(
 
             @PathVariable
-            Long userId,
+            String userId,
 
             @RequestBody
             UserProfileUpdateRequest request

@@ -5,7 +5,6 @@ import org.example.entity.*;
 import org.example.repository.*;
 import org.example.service.AdminService;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -29,8 +28,8 @@ public class AdminServiceImpl implements AdminService {
     public Map<String, Object> health() {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("ok", true);
-        body.put("redis", "jpa");
-        body.put("rabbitmq", "jpa");
+        body.put("redis", "mongodb");
+        body.put("rabbitmq", "mongodb");
         body.put("websocket", false);
         body.put("timestamp", LocalDateTime.now().toString());
         body.put("source", "spring");
@@ -111,7 +110,6 @@ public class AdminServiceImpl implements AdminService {
                 raised.add(sum(bucket));
                 counts.add(bucket.size());
             }
-            // final point for "24"
             raised.add(raised.isEmpty() ? BigDecimal.ZERO : raised.get(raised.size() - 1));
             counts.add(counts.isEmpty() ? 0 : counts.get(counts.size() - 1));
         }
@@ -122,9 +120,8 @@ public class AdminServiceImpl implements AdminService {
                 ? BigDecimal.ZERO
                 : totalRaised.divide(BigDecimal.valueOf(totalDonations), 2, RoundingMode.HALF_UP);
 
-        // If no live data yet, fall back to overall DB totals for a non-empty admin UI
         if (totalDonations == 0) {
-            totalRaised = Optional.ofNullable(donationRepository.sumAllSuccessful()).orElse(BigDecimal.ZERO);
+            totalRaised = sum(donationRepository.findByStatus(Donation.DonationStatus.SUCCESS));
             totalDonations = (int) donationRepository.countByStatus(Donation.DonationStatus.SUCCESS);
             avg = totalDonations == 0
                     ? BigDecimal.ZERO
@@ -143,7 +140,7 @@ public class AdminServiceImpl implements AdminService {
         body.put("raised", raised.stream().map(BigDecimal::doubleValue).toList());
         body.put("donations", counts);
         body.put("summary", summary);
-        body.put("source", "mysql");
+        body.put("source", "mongodb");
         return body;
     }
 
@@ -157,7 +154,7 @@ public class AdminServiceImpl implements AdminService {
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("payments", payments);
-        body.put("source", "mysql");
+        body.put("source", "mongodb");
         return body;
     }
 
@@ -165,9 +162,11 @@ public class AdminServiceImpl implements AdminService {
     public Map<String, Object> userProfiles() {
         List<Map<String, Object>> profiles = userRepository.findAll().stream()
                 .map(user -> {
-                    BigDecimal total = Optional.ofNullable(
-                            donationRepository.totalSuccessfulDonations(user.getId())
-                    ).orElse(BigDecimal.ZERO);
+                    List<Donation> userDonations = donationRepository.findByUserIdAndStatus(
+                            user.getId(),
+                            Donation.DonationStatus.SUCCESS
+                    );
+                    BigDecimal total = sum(userDonations);
                     long donationCount = donationRepository.findByUserIdOrderByDonatedAtDesc(user.getId()).size();
 
                     Map<String, Object> row = new LinkedHashMap<>();
@@ -192,7 +191,7 @@ public class AdminServiceImpl implements AdminService {
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("profiles", profiles);
-        body.put("source", "mysql");
+        body.put("source", "mongodb");
         return body;
     }
 
@@ -205,12 +204,11 @@ public class AdminServiceImpl implements AdminService {
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("events", events);
-        body.put("source", "mysql");
+        body.put("source", "mongodb");
         return body;
     }
 
     @Override
-    @Transactional
     public Map<String, Object> logSecurityEvent(Map<String, Object> body) {
         SecurityEvent event = SecurityEvent.builder()
                 .type(stringVal(body.get("type"), "Login"))
@@ -218,6 +216,7 @@ public class AdminServiceImpl implements AdminService {
                 .ip(stringVal(body.get("ip"), "127.0.0.1"))
                 .device(stringVal(body.get("device"), "Web"))
                 .status(stringVal(body.get("status"), "Success"))
+                .createdAt(LocalDateTime.now())
                 .build();
         event = securityEventRepository.save(event);
 
@@ -228,7 +227,6 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
-    @Transactional
     public Map<String, Object> simulateDonation(User actor) {
         Campaign campaign = campaignRepository.findByStatus(Campaign.CampaignStatus.ACTIVE)
                 .stream()
@@ -245,8 +243,11 @@ public class AdminServiceImpl implements AdminService {
         Donation.PaymentMethod method = methods[new Random().nextInt(methods.length)];
 
         Donation donation = Donation.builder()
-                .user(donor)
-                .campaign(campaign)
+                .userId(donor.getId())
+                .userFullName(donor.getFullName())
+                .campaignId(campaign.getId())
+                .campaignTitle(campaign.getTitle())
+                .cause(campaign.getCause())
                 .amount(amount)
                 .paymentMethod(method)
                 .message("Simulated admin donation")
@@ -285,8 +286,8 @@ public class AdminServiceImpl implements AdminService {
         row.put("id", "PAY-" + donation.getId());
         row.put("donor", Boolean.TRUE.equals(donation.getAnonymous())
                 ? "Anonymous"
-                : (donation.getUser() != null ? donation.getUser().getFullName() : "Donor"));
-        row.put("campaign", donation.getCampaign() != null ? donation.getCampaign().getTitle() : "—");
+                : (donation.getUserFullName() != null ? donation.getUserFullName() : "Donor"));
+        row.put("campaign", donation.getCampaignTitle() != null ? donation.getCampaignTitle() : "—");
         row.put("amount", donation.getAmount());
         row.put("method", toUiMethod(donation.getPaymentMethod()));
         row.put("status", toUiStatus(donation.getStatus()));

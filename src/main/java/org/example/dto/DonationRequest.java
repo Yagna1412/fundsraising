@@ -1,9 +1,7 @@
 package org.example.dto;
 
-
 import jakarta.validation.constraints.*;
-
-        import lombok.Data;
+import lombok.Data;
 import org.example.entity.Donation;
 
 import java.math.BigDecimal;
@@ -12,12 +10,12 @@ import java.math.BigDecimal;
 public class DonationRequest {
 
     @NotNull
-    private Long userId;
+    private String userId;
 
     @NotNull
-    private Long campaignId;
+    private String campaignId;
 
-    private Long recipientId;
+    private String recipientId;
 
     @NotNull
     @DecimalMin("1.00")
@@ -29,5 +27,4 @@ public class DonationRequest {
     private String message;
 
     private Boolean anonymous;
-
 }

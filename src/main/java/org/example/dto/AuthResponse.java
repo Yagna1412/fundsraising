@@ -1,9 +1,7 @@
 package org.example.dto;
-import org.example.entity.User;
-
-
 
 import lombok.*;
+import org.example.entity.User;
 
 @Getter
 @Setter
@@ -12,7 +10,7 @@ import lombok.*;
 @Builder
 public class AuthResponse {
 
-    private Long userId;
+    private String userId;
 
     private String fullName;
 
@@ -21,5 +19,4 @@ public class AuthResponse {
     private User.Role role;
 
     private String message;
-
 }

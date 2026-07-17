@@ -9,7 +9,7 @@ public interface CampaignService {
 
     List<CampaignResponse> getActiveCampaigns();
 
-    CampaignResponse getCampaignById(Long id);
+    CampaignResponse getCampaignById(String id);
 
     CampaignResponse createCampaign(CreateCampaignRequest request);
 }

@@ -1,14 +1,12 @@
 package org.example.config;
 
 import lombok.RequiredArgsConstructor;
-
+import org.bson.types.ObjectId;
 import org.example.entity.Campaign;
 import org.example.entity.Recipient;
 import org.example.entity.User;
-
 import org.example.repository.CampaignRepository;
 import org.example.repository.UserRepository;
-
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -92,7 +90,6 @@ public class DataSeeder implements CommandLineRunner {
             return;
         }
 
-        // Keep demo credentials in sync with the React login page
         user.setPassword(passwordEncoder.encode(rawPassword));
         user.setRole(role);
         user.setFullName(fullName);
@@ -121,27 +118,27 @@ public class DataSeeder implements CommandLineRunner {
                 .build();
 
         Recipient aanya = Recipient.builder()
+                .id(new ObjectId().toHexString())
                 .name("Aanya Sharma")
                 .supportFor("Class 8 school fees and textbooks")
                 .location("Jaipur, Rajasthan")
                 .targetAmount(new BigDecimal("12000"))
-                .campaign(education)
                 .build();
 
         Recipient rohan = Recipient.builder()
+                .id(new ObjectId().toHexString())
                 .name("Rohan Kumar")
                 .supportFor("Uniform, transport, and exam fees")
                 .location("Patna, Bihar")
                 .targetAmount(new BigDecimal("9500"))
-                .campaign(education)
                 .build();
 
         Recipient meena = Recipient.builder()
+                .id(new ObjectId().toHexString())
                 .name("Meena Devi")
                 .supportFor("STEM learning kit and tuition support")
                 .location("Dharwad, Karnataka")
                 .targetAmount(new BigDecimal("15000"))
-                .campaign(education)
                 .build();
 
         education.setRecipients(List.of(aanya, rohan, meena));

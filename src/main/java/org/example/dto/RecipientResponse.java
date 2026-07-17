@@ -1,10 +1,8 @@
 package org.example.dto;
 
-
-
 import lombok.*;
 
-        import java.math.BigDecimal;
+import java.math.BigDecimal;
 
 @Getter
 @Setter
@@ -13,7 +11,7 @@ import lombok.*;
 @Builder
 public class RecipientResponse {
 
-    private Long id;
+    private String id;
 
     private String name;
 
@@ -22,5 +20,4 @@ public class RecipientResponse {
     private String location;
 
     private BigDecimal targetAmount;
-
 }

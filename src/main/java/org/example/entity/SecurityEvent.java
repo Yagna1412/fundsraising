@@ -1,12 +1,12 @@
 package org.example.entity;
 
-import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "security_events")
+@Document(collection = "security_events")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -15,8 +15,7 @@ import java.time.LocalDateTime;
 public class SecurityEvent {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
     private String type;
 
@@ -29,11 +28,4 @@ public class SecurityEvent {
     private String status;
 
     private LocalDateTime createdAt;
-
-    @PrePersist
-    void onCreate() {
-        if (createdAt == null) {
-            createdAt = LocalDateTime.now();
-        }
-    }
 }

@@ -1,10 +1,8 @@
 package org.example.dto;
 
-
-
 import lombok.*;
 
-        import java.math.BigDecimal;
+import java.math.BigDecimal;
 import java.util.List;
 
 @Getter
@@ -14,7 +12,7 @@ import java.util.List;
 @Builder
 public class CampaignResponse {
 
-    private Long id;
+    private String id;
 
     private String title;
 
@@ -39,5 +37,4 @@ public class CampaignResponse {
     private String status;
 
     private List<RecipientResponse> recipients;
-
 }

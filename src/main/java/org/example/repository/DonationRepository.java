@@ -1,44 +1,22 @@
 package org.example.repository;
 
 import org.example.entity.Donation;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.data.mongodb.repository.MongoRepository;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
-public interface DonationRepository extends JpaRepository<Donation, Long> {
+public interface DonationRepository extends MongoRepository<Donation, String> {
 
-    List<Donation> findByUserIdOrderByDonatedAtDesc(Long userId);
+    List<Donation> findByUserIdOrderByDonatedAtDesc(String userId);
 
     List<Donation> findAllByOrderByDonatedAtDesc();
 
     List<Donation> findByDonatedAtAfterOrderByDonatedAtAsc(LocalDateTime after);
 
-    @Query("""
-        SELECT COALESCE(SUM(d.amount), 0)
-        FROM Donation d
-        WHERE d.user.id = :userId
-        AND d.status = org.example.entity.Donation.DonationStatus.SUCCESS
-    """)
-    BigDecimal totalSuccessfulDonations(@Param("userId") Long userId);
+    List<Donation> findByUserIdAndStatus(String userId, Donation.DonationStatus status);
 
-    @Query("""
-        SELECT COUNT(DISTINCT d.campaign.id)
-        FROM Donation d
-        WHERE d.user.id = :userId
-        AND d.status = org.example.entity.Donation.DonationStatus.SUCCESS
-    """)
-    long countSupportedCampaigns(@Param("userId") Long userId);
-
-    @Query("""
-        SELECT COALESCE(SUM(d.amount), 0)
-        FROM Donation d
-        WHERE d.status = org.example.entity.Donation.DonationStatus.SUCCESS
-    """)
-    BigDecimal sumAllSuccessful();
+    List<Donation> findByStatus(Donation.DonationStatus status);
 
     long countByStatus(Donation.DonationStatus status);
 }

@@ -49,7 +49,7 @@ public class DonationController {
     getUserDonations(
 
             @PathVariable
-            Long userId
+            String userId
 
     ) {
 
