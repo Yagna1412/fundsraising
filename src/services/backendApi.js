@@ -141,7 +141,7 @@ export function clearAuthSession() {
 }
 
 const backendApi = {
-  register({ fullName, email, password, phone }) {
+  register({ fullName, email, password, phone, role }) {
     return request("/auth/register", {
       method: "POST",
       body: JSON.stringify({
@@ -149,6 +149,7 @@ const backendApi = {
         email,
         password,
         phone: phone || null,
+        role: role || null,
       }),
     });
   },

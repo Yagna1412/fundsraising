@@ -90,6 +90,7 @@ const Loginsignup = () => {
 
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [registerForm, setRegisterForm] = useState({ name: "", email: "", password: "", phone: "" });
+  const [registerRole, setRegisterRole] = useState("USER");
   const [errors, setErrors] = useState({});
 
   const activeAccount = DEMO_CREDENTIALS[selectedRole];
@@ -135,9 +136,21 @@ const Loginsignup = () => {
     }
 
     try {
-      // Prefer Keycloak when available; fall back to Spring login for local/dev
       let auth;
+
+      // Local Spring auth first (matches register flow; works without Keycloak)
       try {
+        auth = await backendApi.login({
+          email: loginForm.email,
+          password: loginForm.password,
+          role: null,
+        });
+        persistAuthSession(auth);
+        setFeedback({
+          text: auth.message || "Login successful.",
+          type: "success",
+        });
+      } catch (localError) {
         const kc = await keycloakPasswordLogin({
           email: loginForm.email,
           password: loginForm.password,
@@ -154,26 +167,17 @@ const Loginsignup = () => {
         auth = await backendApi.syncSession();
         persistAuthSession(auth, { keepAccessToken: true });
         setFeedback({ text: "Keycloak login successful.", type: "success" });
-      } catch (kcError) {
-        auth = await backendApi.login({
-          email: loginForm.email,
-          password: loginForm.password,
-          role: selectedRole,
-        });
-        persistAuthSession(auth);
-        setFeedback({
-          text: auth.message || "Login successful (local auth — start Keycloak for JWT).",
-          type: "success",
-        });
       }
 
-      if (rememberMe) localStorage.setItem("rememberedRole", selectedRole);
+      const resolvedRole = auth.role || "USER";
+      setSelectedRole(resolvedRole);
+      if (rememberMe) localStorage.setItem("rememberedRole", resolvedRole);
 
       platformApi
         .logSecurityEvent({ type: "Login", user: auth.email, status: "Success" })
         .catch(() => {});
 
-      const redirect = auth.role === "ADMIN" ? "/admin" : "/dashboard";
+      const redirect = resolvedRole === "ADMIN" ? "/admin" : "/dashboard";
       setTimeout(() => navigate(redirect), 500);
     } catch (err) {
       setFeedback({ text: err.message || "Invalid credentials", type: "error" });
@@ -182,18 +186,29 @@ const Loginsignup = () => {
 
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
-    if (!validateRegister()) return;
+    if (!validateRegister()) {
+      setFeedback({ text: "Please fix the highlighted fields.", type: "error" });
+      return;
+    }
     try {
-      await backendApi.register({
+      const auth = await backendApi.register({
         fullName: registerForm.name,
         email: registerForm.email,
         password: registerForm.password,
         phone: registerForm.phone,
+        role: registerRole,
       });
-      setFeedback({ text: "Registration successful. Please sign in.", type: "success" });
-      setRegisterOpen(false);
-      setLoginOpen(true);
-      setLoginForm({ email: registerForm.email, password: "" });
+      persistAuthSession(auth);
+      setSelectedRole(auth.role || registerRole);
+      localStorage.setItem("rememberedRole", auth.role || registerRole);
+      setFeedback({
+        text: `Welcome, ${auth.fullName || "Admin"}! Account created.`,
+        type: "success",
+      });
+      setTimeout(
+        () => navigate((auth.role || registerRole) === "ADMIN" ? "/admin" : "/dashboard"),
+        400
+      );
     } catch (err) {
       setFeedback({
         text: err.message || "Registration failed",
@@ -263,7 +278,7 @@ const Loginsignup = () => {
 
           <h2 className="text-xl font-bold text-slate-900">{isLoginOpen ? "Sign in" : "Create account"}</h2>
           <p className="mt-1 text-sm text-slate-500">
-            {isLoginOpen ? "Choose role and enter credentials." : "Register as a new user."}
+            {isLoginOpen ? "Choose role and enter credentials." : "Register as a user or admin."}
           </p>
 
           {isLoginOpen && (
@@ -355,13 +370,29 @@ const Loginsignup = () => {
 
           {isRegisterOpen && (
             <form className="mt-5" onSubmit={handleRegisterSubmit}>
+              <div className="mb-3 flex gap-1 rounded-lg bg-slate-100 p-1">
+                {Object.entries(DEMO_CREDENTIALS).map(([role, account]) => (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => setRegisterRole(role)}
+                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 text-xs font-bold transition ${
+                      registerRole === role ? "bg-teal-800 text-white" : "text-slate-600"
+                    }`}
+                  >
+                    {role === "ADMIN" ? <ShieldCheck size={14} /> : <User size={14} />}
+                    {account.label}
+                  </button>
+                ))}
+              </div>
+
               <FormInput iconSvg={UserIcon} type="text" name="name" placeholder="Full name" value={registerForm.name} onChange={(e) => handleChange(e, "register")} error={errors.name} />
               <FormInput iconSvg={MailIcon} type="email" name="email" placeholder="Email" value={registerForm.email} onChange={(e) => handleChange(e, "register")} error={errors.email} />
               <FormInput iconSvg={UserIcon} type="tel" name="phone" placeholder="Phone (optional)" value={registerForm.phone} onChange={(e) => handleChange(e, "register")} error={errors.phone} />
               <FormInput iconSvg={LockIcon} type="password" name="password" placeholder="Password (8+ chars)" value={registerForm.password} onChange={(e) => handleChange(e, "register")} error={errors.password} />
 
               <button type="submit" className="w-full rounded-lg bg-teal-800 py-2.5 text-sm font-bold text-white hover:bg-teal-900">
-                Create account
+                Create {registerRole === "ADMIN" ? "Admin" : "User"} account
               </button>
 
               <p className="mt-4 text-center text-sm text-slate-600">
